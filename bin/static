@@ -1,0 +1,41 @@
+#!/bin/bash
+
+width=$(tput cols)
+height=$(tput lines)
+
+height=$(($height -1))
+width=$(($width))
+
+#randomseed=(0 1 2 3 4 5 6 7 8 9 a b c d e f g h i j k l m n o p q r s t u v w x y z)
+randomseed=('#' '0' '1' 'O')
+
+while [ ${#randomseed[@]} -lt $width ]; do
+	randomseed+=(${randomseed[@]})
+done
+
+
+count=0
+line=''
+block=''
+inkey=''
+while [ true ]; do
+	line="$(shuf -e ${randomseed[@]} | tr -d '\n')"
+	line="${line[@]:0:$width}"
+	block+="$line"
+	line=''
+	if [ $count -lt $height ]; then
+		count=$(($count + 1))
+		block+='\n'
+		continue
+	else
+		count=0
+		printf "\033[0;0f\r"
+		printf "$block"
+		printf "\033[0;0f"
+		printf "\033[K"
+		block=''
+		read -n 1 -t .01 inkey
+	fi
+	if [ ! "$inkey" == "" ]; then break; fi
+done
+clear

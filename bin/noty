@@ -1,0 +1,76 @@
+#!/bin/bash
+
+original () { 
+stored="$HOME/Desktop/notes.txt"
+if [ $# -eq 0 ]; then
+	cat "$stored"
+elif [ "$1" = '-s' ] || [ "$1" = "--search" ]; then
+	grep "${2:-$1}" < "$stored"
+elif [ "$1" = '-e' ] || [ "$1" = '--edit' ]; then
+	nano "$stored"
+else
+	echo ""$*"" >> "$stored"
+fi
+}
+
+filenotfound () { echo "<$1> has no entry in <$book>"; }
+
+addpage () {
+	page="${1//![a-zA-Z0-9]/}"
+	echo "$book$page"
+	touch "$book$page"
+}
+
+readpage () {
+	if [ -f "$book$1" ]; then
+		cat "$book$1"
+	else	
+		filenotfound "$1"
+	fi
+}
+
+editpage () {
+	if [ -f "$book$1" ]; then
+		nano "$1"
+	else filenotfound "$1"; fi
+		
+}
+
+writepage () {
+	echo "$1" >> "$2"
+}
+
+readtoc () {
+	printf "%s\n" ${book}*
+}
+
+readhelptext () {
+	strbuilts line
+	strbuilts dashword "   Not Implemented Yet   "
+	strbuilts line
+}
+
+book="$HOME/bin/progresource/noty/"
+mkdir --parents "$book"
+if [ ! -f "${book}plot" ]; then
+	echo "This is the main page for noty notes." > "${book}plot"
+fi
+
+
+if [ "$#" -eq 0 ]; then
+	cat "${book}plot"
+elif [ "$#" -eq 1 ]; then
+	if [ "$1" = "toc" ] || [ "$1" = "contents" ]; then readtoc; exit 0; fi
+	if [ "$1" = "help" ] || [ "$1" = "h" ]; then readhelptext; exit 0; fi
+	cat "$book$1"
+elif [ "$#" -ge 2 ]; then
+	page=$1; shift
+	if [ -f "$book$page" ]; then
+		if [ $1 = "EDIT" ]; then editpage "$page"; exit 0; fi
+	elif [ "$1" = "NEW" ];  then
+		addpage "$page"; beginning=$((beginning+1)); shift
+	fi
+	printf "%s\n" "$*" >> "$book$page"
+fi
+#-------------------------------------------------------------------------------
+exit 0

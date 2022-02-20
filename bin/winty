@@ -1,0 +1,65 @@
+#!/bin/bash
+#							wmctrl options
+# -i use IDNum -r specify window -a move focus to window -t move window to desk
+# -s move to desk
+
+debugflag=false
+initial_desk="$(wmctrl -d | grep '*' | cut -d ' ' -f 1)"
+history="$HOME/bin/.winty_undo"
+winID=''; choice=''; winDesk=''; winCoords=''
+read -a windows <<< "$(wmctrl -lG)"
+
+#fix and filter window output
+#for win in "${windows[@]}"; do echo "not implemented"; done
+
+#only sometimes print the stuff
+debug () { if [ "$debugflag" = "true" ]; then echo "$*"; fi; }
+# set global variable CHOICE
+getChoice () { choice="$(wmctrl -lG | fzf -i -1 -q "$1")"; }
+# break out WIN variables from CHOICE
+convertChoice () {
+	read -a ch <<< $choice
+	if [ "${#ch[@]}" -eq 1 ]; then winDesk=${ch[0]}
+	else
+		winID="${ch[0]}"
+		winDesk="${ch[1]}"
+		winCoords="${ch[@]:2:4}"
+	fi
+	debug "wID: $winID winDesk: $winDesk wCoords: $winCoords"
+}
+#record for the undo command
+writeHistory () {
+	if [ "$?" -eq 0 ] && [ -n "$choice" ]; then
+		echo "$choice" > "$history"; fi
+}
+if [ "$1" = "--test" ]; then debugflag=true; shift; fi
+
+if [ $# -eq 0 ]; then
+	strbuilts --center "   WINty   "
+	printf "%b\n" "USAGE: \$ winty <option> <window keyword>\nOPTIONS:\n  --grab    a window, bringing to yourself\n  --go    to a window, changing your workspace\n  --undo    the last movement"
+elif [ "$1" = "--grab" ]; then
+	getChoice "$2";	convertChoice
+	wmctrl -ir "$winID" -t "$initial_desk"
+	debug "$initial_desk"
+elif [ "$1" = "--go" ]; then
+	getChoice "$2"; convertChoice
+	if [ "$winDesk" = "$initial_desk" ]; then bash $0 --undo; exit 0; fi
+	wmctrl -s "$winDesk"
+	choice="$initial_desk"
+elif [ "$1" = "--undo" ]; then
+	choice=$(cat "$history")
+	convertChoice
+	if [ -z "$winID" ]; then
+		wmctrl -s "$winDesk"
+		choice="$initial_desk"
+	else
+		wmctrl -ir "$winID" -t "$winDesk" #-e "0,${winCoords//' '/,}" dont work?
+	fi
+fi
+
+#create undo here, based on current/initial directory
+writeHistory
+exit 0
+#current_workspace="$(wmctrl -d | grep '*' | cut -d ' ' -f 1)"
+#if [ "crr
+

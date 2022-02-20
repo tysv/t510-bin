@@ -1,0 +1,19 @@
+#!/bin/bash
+
+dirfile='/home/ty/bin/.scredit'
+#options for maintaining the preferred directories list
+if [ "$1" = '--add' ] || [ "$1" = "-a" ]; then
+	if [ -d "$2" ]; then echo "$2" >> "$dirfile"
+	elif [ -z "$2"]; then echo "$PWD" >> "$dirfile"
+	fi
+	exit 0
+elif [ "$1" = "--edit" ] || [ "$1" = "-e" ]; then
+	nano "$dirfile"; exit 0;
+fi
+
+
+read -d '$EOF' -a directories < "$dirfile"
+
+choice=$(find "${directories[@]}" -maxdepth 1 -type f | fzf -1 -e -q "$1")
+
+if [ -n "$choice" ]; then nano "$choice"; fi

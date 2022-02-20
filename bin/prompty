@@ -1,0 +1,64 @@
+#!/bin/bash
+
+# '\033[x;ym <characters> \033[m'
+# x=0 dark x=1 LIGHT
+# y=color 30=black	34=blue		32=green	36=cyan
+# 31=red	35=purple	33=brown	grey/white=37
+
+
+# export PS1="\[\033[38;5;11m\]\u\[$(tput sgr0)\]@\h:\[$(tput sgr0)\]
+# \[\033[38;5;6m\][\w]\[$(tput sgr0)\]: \[$(tput sgr0)\]"
+
+# PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h
+#\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ '
+
+output=''
+exit_code="$?"
+alerts="$(mailarca --getcount)"
+
+
+colorWord () {
+	printf "%s" '\[\033['$1';'$2'm\]'$3'\[\033[m\]'
+}
+
+if [ $alerts -gt 0 ]; then
+	colorWord 0 31 "[\[$(mailarca --getcount)\]]"
+fi
+exit 0
+setColor () {
+	output+='\033['$1';'$2'm'
+}
+resetColor () {
+	output+='\033[0m'
+}
+mailarca_module () {
+	if [ "$alerts" -gt "0" ]; then
+		colorWord 0 31 '[\[$(mailarca --getcount)\]]'
+	fi
+}
+################################################################################
+while [ $1 ]; do
+	case $1 in
+		--module|-m)
+			[ $2 = "mailarca" ] && mailarca_module
+			shift 2
+		;;
+	esac
+done
+
+#echo -e "\e[$1;$2m"\[$3\]"\e[m"
+#exit 0
+
+output+="$(setColor 1 36)"
+output+='${debian_chroot:+($debian_chroot)}'
+output+="$(resetColor)"
+output+="$(colorWord 1 37 '\u@\h:')"
+if [ "$alerts" -gt 0 ]; then
+	output+='\[$(prompty --module mailarca)\]:'
+fi
+output+='\w'
+if [ ! "$exit_code" -eq 0 ]; then
+	colorWord 1 31 '$ '
+else output+='\$ '; fi
+
+printf "%s" "$output"

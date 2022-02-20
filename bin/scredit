@@ -1,0 +1,194 @@
+#!/bin/bash
+################################################################################
+################################################################################
+######    SCRipt EDit              #############################################
+######    Easily edit files in     #############################################
+######    ur prespecified dirs     #############################################
+################################################################################
+################################################################################
+shopt -s nullglob				   #FIRST TIME RUN AND GLOBAL VARIABLES
+dir_list_path="$HOME/bin/.scredit"
+directories=(); fuzzyfiles=(); file=''
+debugflag=false
+resetflag=false #set to true when trying new search term in presentoptions()
+pagelength=$(($(tput lines) - 3))
+editorflag="gedit"
+if [ ! -f "$dir_list_path" ]; then #first time start, make bin and dir_list file
+	mkdir --parents "$dir_list_path"; touch "$HOME/bin/.scredit"; fi
+#reads in the directories to search for files
+read -d '$EOF' -a directories < "$dir_list_path"
+#while read -e dir; do directories+=("$dir"); done < "$dir_list_path"
+if [ ${#directories[@]} -eq 0 ]; then
+	echo "Blank .scredit file. Add your script directories to ($dir_list_path)."
+	exit 0
+fi
+################################################################################
+################################################################################
+#----------------------------# FUNCTIONS  #------------------------------------#
+################################################################################
+################################################################################
+#took a line here to save hella space later.
+debug () { if [ "$debugflag" = true ]; then printf "$1\n"; else return 1; fi; }
+addDirectory () {
+	if [ "$1" = "here" ]; then dirpath="$PWD"
+	else dirpath="$1"; fi
+	if [ -d "$dirpath" ]; then echo "$dirpath" >> "$dir_list_path"
+	else echo "Failed to find directory ("$dirpath")"; fi
+	return 0
+}
+#fuzzyfiles is a global array containing the close matches
+#can be replaced by a find call??
+fuzzySearch () {
+	#file is a global var stemming from query:$1
+	candidates=("$file"*)
+	for fuz in "${candidates[@]}"; do
+	#ignore disqualified candidates, accept all others
+		if [ -d "$fuz" ] || [ ! "$fuz" = "${fuz//_old/}" ]; then continue
+		else fuzzyfiles+=("$fuz"); fi
+	done
+}
+
+straightSearch () {
+	for d in ${directories[@]}; do
+		if [ $success = true ]; then break; fi
+		file=""$d"/"$1""
+		if [ -f "$file" ]; then	success=true
+		else
+			fuzzySearch
+		fi
+	done
+}
+
+optionsMenu () {
+	while true; do
+		printf "Choose file#, "
+		printf "(n)ext page, (q)uit looking, or (:<arg>) to search again: "
+		read -p '' key
+		if [ "$key" = "q" ]; then exit 0
+		elif [ "$key" = "n" ]; then currentpage=$(($currentpage+1));break
+		elif [ "$key" = "b" ]; then currentpage=$(($currentpage-1));break
+		elif [ "${key[@]:0:1}" = ":" ]; then resetflag=true; success=true; break
+		fi
+		#MAIN PATH -- reject any non valid non index input
+		key=${key//[^0-9]/}
+		debug "key: $key"
+		if [ -z "$key" ] || [ "$key" -ge ${#fuzzyfiles[@]} ] \
+						 || [ "$key" -lt 0 ]; then 
+			printf "Error: Bad input."
+			printf " Choose a valid # or quit dude.\n"
+			continue; fi
+		file="${fuzzyfiles[$key]}"
+		success=true
+		break
+	done
+}
+
+
+presentOptions () {
+	numoptions="${#fuzzyfiles[@]}"
+	if [ "$numoptions" -le 0 ]; then
+		debug "error: no files to present"
+		return 0
+	elif [ $numoptions -eq 1 ]; then
+		success=true; file="${fuzzyfiles[0]}"; return 0
+	fi
+
+	if [ $(( $numoptions % $pagelength )) -eq 0 ]; then
+		numpages=$(( ($numoptions / $pagelength) - 1 ))
+	else numpages=$(( ($numoptions / $pagelength) )); fi
+
+	currentpage=0
+	#flipping through pages
+	while [ $success = false ] && [ "$resetflag" = false ]; do
+		clear
+		#PART 1 PRINT CURRENT PAGE OF FILENAMES
+		#wraparound page search
+		if [ $currentpage -gt $numpages ]; then currentpage=0
+		elif [ $currentpage -lt 0 ]; then currentpage=$numpages; fi
+		lstart=$((($pagelength+1) * $currentpage))
+		lend=$(( ($lstart + $pagelength) ))
+		printf "page $(($currentpage+1)), of $(($numpages+1)) pages.\n"
+		debug "currpage: $currentpage"
+		debug "lstart: $lstart     lend: $lend"
+		for index in $(seq $lstart $lend); do
+			filename="${fuzzyfiles[$index]}"
+			if [ -n "$filename" ]; then	printf "$index: $filename\n"; fi
+		done
+		#PART 2 RESPOND TO THE DISPLAYED LIST
+		optionsMenu
+	done
+}
+################################################################################
+################################################################################
+#------------------------------#  PROCESS BEGIN  #-----------------------------#
+#####################################################F###########################
+################################################################################
+
+success=false
+
+#minor flag processing
+while [ "$#" -gt 1 ]; do
+	if [ "$1" = "-n" ] || [ "$1" = "--nano" ]; then
+		editorflag="nano"; shift; fi
+	if [ "$1" = "-g" ] || [ "$1" = "--gedit" ]; then
+		editorflag="gedit"; shift; fi
+	if [ "$1" = "-m" ] || [ "$1" = "--mousepad" ]; then
+		editorflag="mousepad"; shift; fi
+	if [ "$1" = "-a" ] || [ "$1" = "--atril" ]; then
+		editorflag="atril"; shift; fi
+	if [ "$1" = "-e" ] || [ "$1" = "--extend" ]; then
+		if [ "$2" = "here" ]; then ndir="$PWD";fi
+		if [ -d "${ndir:-$2}" ]; then
+			echo "${ndir:-$2}" >> "$dir_list_path"
+			exit 0;
+		else echo "${ndir:-$2} is not a valid directory"; exit 0
+		fi
+	fi
+done
+
+if [ $# -eq 0 ] && [ "$success" = "false" ]; then
+	echo ">>>SC(ript)EDIT opens files from preferred directories with $EDITOR<<<"
+	echo "Optional calls:"
+	echo "	scredit -e/--extend <directory> 	adds a directory to whitelist."
+	echo "		<'here'>		adds cwd to whitelist"
+	echo "	scredit -n/--nano <directory>	uses nano as editor."
+	echo "	scredit -g/--gedit <directory>	uses gedit as editor (default)."
+	echo "  scredit -m/--medit <directory>	uses mousepad as editor."
+	echo
+	echo "Directories to search within, in order of preference: "
+	printf "%s\n" "${directories[@]}"
+	exit 0
+elif [ $# -eq 2 ]; then
+	echo "this does nothing and shouldn't be printing";exit 0
+elif [ $# -eq 1 ]; then
+	if [ $1 = "-e" ] || [ $1 = "-edit" ]; then
+		success=true; file="$dir_list_path"; fi
+	#standard operating mode - search for file, & track of candidate matches
+	straightSearch "$1"
+	#if no exact matches found, present the candidate match list
+	if [ $success = "false" ]; then presentOptions; fi
+	#allows the user to use a new search term again, any number of times
+	while [ "$resetflag" = true ]; do
+		resetflag=false; success=false
+		fuzzyfiles=(); file=''
+		straightSearch "${key[@]:1}"
+		presentOptions
+	done
+fi
+################################################################################
+################################################################################
+#-------------------------------#  POST PROCESS  #-----------------------------#
+################################################################################
+################################################################################
+if [ "$success" = false ]; then echo "Failed to find ($1)."; exit 0; fi
+
+if [ "$editorflag" = "nano" ]; then
+	nano "$file" || echo "cdty: error: failed to open ($file) with nano"
+elif [ "$editorflag" = "gedit" ]; then
+	{ gedit "$file" & disown; } &>/dev/null
+elif [ "$editorflag" = "mousepad" ]; then
+	mousepad "$file" & disown || echo "scredit: error: failed to open ($file) with mousepad"
+elif [ "$editorflag" = "atril" ]; then
+	atril "$file" & disown || echo "scredit: error: failed to open ($file) with atril"
+fi
+################################################################################

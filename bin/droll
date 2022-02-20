@@ -1,0 +1,56 @@
+#!/bin/bash
+overflowflag=false
+rawflag=false
+coinMode=true
+
+message=''
+roll () {
+	if [ "$1" -eq "$1" ] && [ -n "$1" ]; then
+		message+="$(( ( $RANDOM % $1 ) + 1 )) "
+	else
+		echo "error: cannot roll a $1-sided die."
+		exit 2
+	fi
+}
+
+if [ "$1" = "-r" ] || [ "$1" = "--raw" ]; then rawflag=true; shift; fi
+
+if [ $# -eq 0 ]; then
+#	echo "	droll ([sides],[sides,num])...([sides],[sides,num])"
+	echo ">>>    D(ice)ROLL    <<<"
+	echo "droll 100 4d6 1d100 9d2"
+	printf "%s\t\n" "$(droll 5d20 100 4d6 1d100 9d2)"
+fi
+
+while [ $# -gt 0 ]; do
+	message=""; length=${#1}
+	#splits upon the 'd' character
+	IFS="d" read -a half <<< "$1"
+	if [ "${#half[@]}" -eq 1 ]; then
+		die_sides="${half[0]}"; num_rolls=1
+	else
+		num_rolls="${half[0]}"; die_sides="${half[1]}"
+	fi
+	ncheck="${num_rolls//[0-9]/}"; dcheck="${die_sides//[0-9]/}"
+	if [ -n "$dcheck" ]; then echo "$die_sides isn't a number"; exit 0; fi
+	if [ -n "$ncheck" ]; then echo "$num_rolls isn't a number"; exit 0; fi
+	if [ "$die_sides" -gt "32767" ]; then overflowflag=true; fi
+
+	for i in $(seq 1 $num_rolls); do
+		roll ${die_sides}
+	done
+	if [ "$rawflag" = true ]; then printf "%s\n" "$message"
+	else
+		if [ "$coinMode" = true ] && [ "$die_sides" -eq 2 ]; then
+			message="${message//1/H}"
+			message="${message//2/T}"
+			printf "%s\n" "coin: $message"
+		else
+			printf "%s\n" "d$die_sides: $message"; fi
+	shift 1
+	fi
+done
+
+if [ $overflowflag = true ]; then
+	echo "hey btw this doesn't work properly on numbers >= 32768"; fi
+exit 0

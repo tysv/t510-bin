@@ -1,0 +1,70 @@
+#!/bin/bash
+
+
+#should load macs and ips from /$HOME/.ssh/config
+
+sshconfig="$HOME/.ssh/config"
+sleepflag=false; wakeflag=false
+declare -A macs
+
+#Dell optiplex 9010 all-in-one
+macs["aio"]="5c:f9:dd:e0:73:50"
+macs["optiplex9010"]="5c:f9:dd:e0:73:50"
+macs["musketeer"]="5c:f9:dd:e0:73:50"
+
+#Lenovo thinkcentre m...?
+macs["sat"]='44:37:e6:7f:79:bd'
+macs["satellite"]='44:37:e6:7f:79:bd'
+macs["tcentre"]='44:37:e6:7f:79:bd'
+macs["thinkcentre"]='44:37:e6:7f:79:bd'
+
+#Lenovo Thinkpad t510
+macs["t510"]='00:24:d7:70:de:8c' #maybe? 'f0:de:f1:65:56:49'
+
+#BITCOIN MINING GAMER PC BRO
+macs["desktop"]='A8-A1-59-49-28-4A'
+
+if [ $# -eq 0 ]; then
+	printf "host:%s\t" "${!macs[@]}"; echo
+	exit 0
+fi
+
+#placeholder
+while [ "${1:0:1}" = "-" ]; do
+	if [ "$1" = "--wake" ] || [ "$1" = '-w' ]; then
+		wakeflag=true
+	elif [ "$1" = "--sleep" ] || [ "$1" = '-s' ]; then
+		sleepflag=true
+	else
+		echo "error: invalid flag: $1"
+		exit 1
+	fi
+	shift
+done
+
+sleepyboi () {
+	#fakig it right now
+	sudo ssh -t ty@10.0.0.50 'shutdown +1m'
+}
+
+rebooty () {
+	#faking it right now
+	sudo ssh -t ty@"10.0.0.50" 'shutdown -r +1m'
+}
+
+wakeup () {
+	for key in "${!macs[@]}"; do
+		if [ "$1" = "$key" ]; then wakeonlan "${macs[$1]}"; fi
+	done
+}
+
+
+if [ "$sleepflag" = "true" ]; then
+	sleepyboi
+elif [ "$wakeflag" = "true" ]; then
+	wakeup
+elif [ "$rebootflag" = "true" ]; then
+	rebooty
+else
+	echo "Nothing to do here kid."
+fi

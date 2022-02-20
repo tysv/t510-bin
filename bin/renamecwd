@@ -1,0 +1,119 @@
+#!/bin/env bash
+DEBUGGING=TRUE
+
+prefixskips=()
+pflag_char=""; pflag_num=""
+forceflag=false; stripflag=false; undoflag=false
+
+if [ -z "$1" ] || [ $1 = '-h' ] || [ $1 = '--help' ]; then 
+	printf "%b\n" "RENAMECWD
+renamecwd <name> <flags> skipglob\n
+Given a name, will RENAME ALL FILES in this directory.
+note: Will not modify any filenames which begin with <skip> args.
+note: If <name> has no file extension, preserve existing ones.
+\n\tfile format:\t<name><number><file_extension>\n
+SPECIAL NAMES:
+here\tcopy name from current working dir. (now:$(basename $PWD))
+OPTIONAL FLAGS:
+--undo -u\treverts filenames of last modified files.
+--force -f\tdo NOT require confirmation to modify file names.
+--strip -s\tstrip any existing file extensions.
+--pad <char>;<num>\tpad filenumber with num of given char.
+\tblank <char> means use '0'.\n\tblank <num> will ensure \
+each <number> has same length.
+\tnote: semi-colon always required with --pad flag.
+"
+ 
+	
+	printf "\n"
+	exit 2
+fi
+################################################################################
+#####					PROCESS COMMAND PARAMETERS						   #####
+################################################################################
+#assign label
+if [ "$1" = "here" ]; then newlabel=$(basename "$PWD")
+else newlabel="$1"; fi
+#read flags and skips
+while [ "$@" ]; do
+	if [ "$1" = "--undo" ] || [ "$1" = "-u" ]; then
+		undoflag=true
+		shift; continue;
+	elif [ "$1" = "--force" ] || [ "$1" = "-f" ]; then
+		forceflag=true
+		shift; continue;
+	elif [ "$1" = "--strip" ] || [ "$1" = "-s" ]; then
+		stripflag=true
+		shift; continue;
+	elif [ "$1" = "--pad" ] || [ "$1" = "-p" ]; then
+		echo "ok honestly this was dumb"
+		continue
+		if [ "$1" = "-p" ]; then input='0;'; continue; fi
+		else shift; fi
+		IFS=';' read -a split <<< "${input:-$1}"
+		char=${split[0]:-'0'}
+		tmp="${split[1]//![0-9]/}"; num=${tmp:-"match"}
+		pflag_char="$char"; pflag_num="$num"
+		echo flag
+		shift; continue;
+	elif [ "$1" = "--quit" ] || [ "$1" = "-q" ]; then
+		exit 0
+	else
+		skipglobs+=("$1"); shift
+	fi
+done
+
+echo "implement a force flag bro. this shit is too dangerous."
+exit 0
+
+#pregenerate the list of VALID files to count num elements
+declare -a filelist 
+for file in *; do 
+	if [ -f "$file" ]; then
+		skip='no'
+		for prefix in ${prefixskips[@]}; do
+			#echo "$file $prefix ${file#$prefix}"
+			if [ ! "${file#$prefix}" = "$file" ]; then skip=yes; fi
+		done
+		if [ $skip = no ]; then filelist+=("$file"); fi
+	fi
+done
+
+numfiles=${#filelist[@]}
+#get number of digits for later padding
+n=$numfiles; zerofill=0
+while [ $n -gt 0 ]; do
+	zerofill=$(($zerofill+1))
+	n=$(($n / 10))
+done
+zerofill=$(($zerofill+1)) #future proofing lol
+
+#echo ${prefixSkips[@]}
+#echo ${filelist[@]}
+#echo $zerofill
+#read -p "pause"
+index=0
+
+if [ "$forceflag" = true ]; then
+	echo "force confirmation goes here"
+fi
+echo "not safe yet. exiting..."
+exit 0
+for filename in ${filelist[@]}; do
+	IFS="." read -a fileparts <<< "$filename" 
+	zeropaddedindex=$(printf "%0*d" "$zerofill" "$index")
+	if [ ${#fileparts[@]} -lt 2 ]; then
+		if [ $DEBUGGING = TRUE ]; then
+			echo "mv "$filename" ""$newlabel""$zeropaddedindex"""	
+		else 
+			mv "$filename" ""$newlabel""$zeropaddedindex""
+		fi
+	else
+		if [ $DEBUGGING = TRUE ]; then
+			echo "mv "$filename" ""$newlabel""$zeropaddedindex"."${fileparts[1]}"""
+		else 
+			mv "$filename" ""$newlabel""$zeropaddedindex"."${fileparts[1]}""
+		fi
+	fi
+	index=$(($index+1))
+done

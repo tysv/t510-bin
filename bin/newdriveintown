@@ -1,0 +1,26 @@
+#!/bin/bash
+
+recordpath="$HOME/bin/.newdriveintown"
+if [ ! -f $recordpath ]; then touch "$recordpath"; fi
+
+
+
+if [ "$1" = "update" ] ; then 
+	rm "$recordpath"; touch "$recordpath"
+	for name in /dev/*; do #sd*; do
+		echo "$name" >> "$recordpath"
+	done 
+	#echo -e "known: $(cat $recordpath)"
+else
+	declare -A old
+	while read -r name; do
+		old["$name"]="exists"
+	done < "$recordpath"
+	#echo "${!old[@]}"
+	for name in /dev/*; do #sd*; do
+		if [ -z "${old[$name]}" ]; then
+			new+=("$name")
+		fi
+	done
+	echo "\"new\": ${new[@]}"
+fi

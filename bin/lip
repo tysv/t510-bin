@@ -1,0 +1,54 @@
+#!/bin/bash
+
+#LIP ---> (L)ocal (IP)
+
+report="$HOME/reports/localhosts.log"
+expectedlocal="10.0.0.X"
+localrange=${expectedlocal//"X"/"0-254"}
+
+if [ ! -e $report ]; then
+	if [ ! -d "$HOME/reports" ]; then
+		mkdir "$HOME/reports"
+	fi
+	touch $report
+fi
+
+if [ $# -eq 0 ]; then
+	select choice in Cached Scan Quit; do
+		case "$choice" in
+			Cached)
+				cat "$report"
+				;;
+			Scan)
+				#echo "Scanning local IPs (192.168.1.0-254)"
+				#nmap -sn 192.168.1.0-254 > "$report"
+				echo "Scanning local IPs $localrange"
+				nmap -sn "$localrange" > "$report"
+				#sed -ni '1d' "$report"
+				echo "	last updated: $(date)" >> $report
+				cat "$report"
+				;;
+			Quit)
+				exit 0
+				;;
+			*)
+				echo "invalid option: $REPLY"
+				;;
+		esac
+	done
+elif [ $# = 1 ]; then
+	if [ $1 = -c ] || [ $1 = cached ] || [ $1 = c ]; then
+		cat "$HOME/reports/localhosts.log"
+	elif [ $1 = -s ] || [ $1 = scan ] || [ $1 = s ]; then
+		echo "Scanning local IPs $localrange"
+		nmap -sn "$localrange" > "$HOME/reports/localhosts.log"
+		cat "$HOME/reports/localhosts.log"
+	else
+		echo "Improper usage. Try again with no arguments,\
+		or a single argument:"
+		echo "	-(s)can		-view (c)ached"
+	fi
+else
+	echo "Improper usage. Try again with no arguments, or a single argument:"
+	echo "	-(s)can		-view (c)ached"
+fi

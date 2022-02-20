@@ -1,0 +1,54 @@
+#!/bin/bash
+
+#DEPENDANCIES:
+#	STRBUILDER
+#	TPUT
+#contains functions utilizing strbuilder to create reusable string functions
+
+
+
+printdashword () {
+	message="${1:-}"
+	term_w="$(tput cols)"
+	dashline=$(printline $2)
+	halflength="$(( (term_w - ${#message}) / 2 ))"
+	halfdash="${dashline[*]:0:$halflength}"
+	if [ ! $((${#message}%2)) -eq $(($term_w%2)) ]; then 
+		optional="$char"; else optional=''; fi
+	printf "%s\n" "$halfdash$message$halfdash$optional"
+}
+
+#prints terminal width of dash character, or your chosen single character
+printline () { char="${1:--}"; strbuilder "$(tput cols)" "${char:0:1}"; }
+
+printalpharoad () {
+	clear
+	alarm=.5 #as a second
+	growth=.90
+		for lap in {1..10}; do
+		for letter in {a..z}; do
+			printf "%s" \
+"$(strbuilder -s nl -r "$(tput cols)" "$(strbuilts line "$letter")")"
+			sleep "$alarm"
+			alarm=$(bc <<< "$alarm * $growth")
+		done
+		if [ $((lap / 2 )) -eq 0 ]; then
+			growth=.9
+		else
+			growth=1.25
+			sleep 1
+		fi
+	done
+}
+
+help="	--line|-l <c>		print terminal width line of overridable <dash>
+	--center|-c <arg> <c>	print <arg> in center of twidth  <dash> line
+"
+
+case $1 in
+	--line|-l) printline "$2";;
+	--center|-c) printdashword "$2" "$3";;
+	*|--help|-h) strbuilts --center ' OPTIONS '; printf "%s\n" "$help";;
+esac
+exit 0
+

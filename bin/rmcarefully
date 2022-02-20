@@ -1,0 +1,327 @@
+#!/bin/bash
+
+#to be called by alias 'rm' to allow undoing rm calls
+#dependencies: realpath, basename, head, tail, find, mkdir
+
+debugflag=false; dry=false; now="now" #now: change, if u want a false rm history
+rmdirectory="/$HOME/Documents/backups/.rmcarefully/"
+	if [ ! -d "$rmdirectory" ]; then mkdir --parents "$rmdirectory"; fi
+rmhistory="/$HOME/Documents/backups/.rmcarefully_history"
+	if [ ! -f "$rmhistory" ]; then touch "$rmhistory"; fi
+jaildir="/$HOME/Documents/backups/.rmcarefully_jail/"
+	if [ ! -d "$jaildir" ]; then mkdir --parents "$jaildir"; fi
+configfile="/$HOME/bin/.rmcarefully_config"
+	if [ ! -f "$configfile" ]; then touch "$configfile"; fi
+eraseinterval="30 days ago" #control how old files must be for real deletion
+migrateinterval="7 days ago"
+datedirformat="%y/%m/%d/%H/%M" #dictates trashcan location and date comparisons
+trashdateformat="%t%a | %d-%m-%y | %k:%M | %s"
+trashdatelabel="Day | DD-MM-YY | 24:60 | seconds"
+
+################################################################################
+##############################   FUNCTIONS   ###################################
+########## GLOBALS ONLY USED BY FUNCTIONS INITIALIZED BEFORE FUNCTION ##########
+################################################################################
+debug () { if [ ! "$debugflag" = true ];then return 1;else printf "$1\n"; fi;}
+################################################################################
+removedirectories () { #RMDIRECTORIES RMDIRECTORIES RMDIRECTORIES RMDIRECTORIES
+	echo "Not implemented yet"
+}
+
+remove () { # REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE REMOVE
+#############################
+#  ONLY DELETE VALID TRASH  #
+#############################
+	validtrash=()
+	for file in "$@"; do if [ -f "$file" ]; then
+		charcheck="${file//$' '/'_'}"
+		charcheck="${charcheck//[!a-zA-Z0-9\/\.\-\_]/}"
+		if [ ! "$file" = "$charcheck" ]; then
+				#spaceless="${file//' '/_}"
+			if [ $dry = false ]; then
+				echo "NOTE:FILE MODIFIED BEFORE MOVING"
+				mv "$file" "$charcheck"; file="$charcheck";
+				validtrash+=("$(realpath "$file")")
+			else
+				echo "NOTE:FILE would be MODIFIED BEFORE MOVING"
+				echo "would: mv "$file" "$charcheck"; file="$charcheck""
+				echo "would: validtrash+=("$(realpath "$file")")"
+			fi
+		else #file requires no modification
+			validtrash+=("$(realpath "$file")")
+		fi
+		
+		else #incase passed a non-file path
+			printf "%s" "rmcarefully: error: "$(realpath $file)""
+			printf "%s\n" " was not valid for deletion."
+		fi
+	done
+#############################
+#DONE COLLECTING VALID TRASH#
+#############################
+	if [ "${#validtrash[@]}" -eq 0 ]; then
+		echo "error: remove(): no valid files given"; return 0; fi
+	trashcan="$rmdirectory"$(date -d "$now" +"$datedirformat")/"" || exit 1
+	#prepare location to deposit files, and the associated memory dotfile.
+	mkdir --parents "$trashcan"; trashmem="${trashcan}.trashmemory"
+	timestamp="$(date -d "$now" +"$trashdateformat")"
+	#files thrown away during the same minute share a directory together
+	#detect and save info from previous dotfile file if present.
+	if [ -f "$trashmem" ]; then
+		read -a trashtop <<< "$(head -n 1 $trashmem)"; prevcount=${trashtop[0]}
+		prevmemory=("$(tail -n +2 $trashmem)")
+		debug "prevcount: $prevcount	memorylines: ${#prevmemory[@]}"
+	else prevcount=0; prevmemory=()
+	fi
+	fullcount=$((${#validtrash[@]} + $prevcount))
+	#new trash head
+	echo "$fullcount file(s): $timestamp" > "$trashmem"
+	#add old memories
+	echo "${prevmemory[@]}" >> "$trashmem"
+	#create and add new memories
+	for trash in "${validtrash[@]}"; do
+		new=""$trashcan"$(basename "$trash")"_trash""
+		old="$trash"
+		if [ $dry = false ]; then
+			mv "$old" "$new"
+			echo ""$old" "$new"" >> "$trashmem"
+		else
+			echo "mv "$old" "$new""
+			echo "echo ""$old" "$new"" >> "$trashmem""
+		fi
+	done
+}
+#prints argument centered in a dashed line (width=term width)
+#if no argument, prints a dash line width of terminal
+printdash () {
+	term_w="$(tput cols)"
+	dashline=$(strbuilder $term_w '-')
+	halflength="$(( ($term_w - ${#1}) / 2 ))"
+	halfdash="${dashline[*]:0:$halflength}"
+	if [ $((${#1}/2)) -eq 0 ] && [ -n "$1" ]; then optional='-'
+	else optional=''; fi
+	printf "%s\n" "$halfdash$1$halfdash$optional"
+}
+
+################################################################################
+###############################    UNDO BLOCK    ###############################
+#############################    UNDO BLOCK    #################################
+###########################    UNDO BLOCK    ###################################
+################################################################################
+undo () { #UNDO UNDO UNDO UNDO UNDO UNDO UNDO UNDO UNDO UNDO UNDO UNDO UNDO UNDO
+	if [ "$1" = "--force" ] || [ "$1" = "-f" ]; then echo
+		echo "IMPLEMENT: force flag"; exit 0
+	elif [ "$1" = "--last" ] || [ "$1" = "-last" ]; then
+		echo "IMPLEMENT: undoing last instance of rmcarefully removing file."
+		exit 0
+	fi
+	displaymems () { #prints .trashmemory first line of all .trashmemories
+		if [ ${#memarr[@]} -eq 0 ]; then
+			echo "NOTHING TO SEE HERE FOLX"; exit 0; fi
+		printf "%s:\t%s:\t%s\n" "index" "numfile(s)" "$trashdatelabel"
+		printdash 'TrashPiles'
+		for i in "${!memarr[@]}"; do
+			printf "%s:\t%s\n" "$i" "$(head -n 1 ${memarr[$i]})"
+		done
+	}
+	memarr=() #gather lines, and sort old first new last.
+	makememories () {
+		memarr=()
+		IFS=$'\n'; 
+		dotpaths=($(find "$rmdirectory" -type f -name ".trashmemory"))
+		tmplocation="$HOME/tmp/.tmpsortfile"; printf '' > "$tmplocation"
+		declare -A memdict
+		for dotfile in "${dotpaths[@]}"; do 
+			IFS=$' ' read -ra fields <<< "$(head -n 1 "$dotfile")"
+			seconds="${fields[8]}"
+			debug ${!fields[@]};
+			echo "$seconds" >> "$tmplocation"
+			memdict["$seconds"]="$dotfile"
+		done
+		sort -n "$tmplocation" > "${tmplocation}_sorted"
+		while read -r line; do
+			memarr+=("${memdict[$line]}")
+		done < "${tmplocation}_sorted"
+		rm "${tmplocation}_sorted"
+		rm "$tmplocation"
+	}
+	displayhelp () { #DISPLAYHELP DISPLAYHELP DISPLAYHELP DISPLAYHELP
+	printf "
+Options:
+   (q)uit\twill exit the script.\t(h)elp\twill show this thang here
+   <index>? \t\twill show the files inside that set.   
+   <index>(r)ecover\twill copy files to their origin (predeletion).
+   <index>(j)ail\twill copy files to:("\$jaildir")
+   <index>(t)erminal\twill open terminal in selected directory
+   <index>(e)xplorer\twill open file explorer (thunar) in selected dir
+   <index>(c)leanse\twill delete that archive\n"; }
+	makememories
+	clear; displaymems; displayhelp
+	success=''
+	while [ ! $success ]; do
+		read -p ':> ' choice
+		if [ ${#choice} -eq 0 ]; then clear; displaymems;continue; fi
+		
+		choice_digits="${choice//[^0-9]}"; choice_extra="${choice//[ 0-9]}"
+		
+		debug "choice became:>$choice_digits< >$choice_extra<"
+		if [ "$choice" = 'q' ] || [ "$choice" = 'quit' ]; then exit 0; fi
+		if [ "$choice" = 'h' ] || [ "$choice" = 'help' ]; then 
+			displayhelp; continue; fi
+################################################################################
+################		VALID DIGIT, UTILIZING FILE LISTS NOW	   #############
+		if [ ! -n "$choice_digits" ]; then
+			echo "error: all operations require a valid index."; continue; fi
+		files=("$(tail -n +2 "${memarr[$choice_digits]}")")
+		IFS=$'\n' filelist=($files)		
+		if [ "$choice_extra" = '?' ]; then #one line loop!
+			#DONT SHOW the NEW filenames which comes after the ' ' char
+			printf "%s\n" "${filelist[@]//$' '*/}"; continue
+		elif [ $choice_extra = "terminal" ] || [ $choice_extra = "t" ]; then
+			echo "implement open-terminal-here mode"
+		elif [ $choice_extra = "explorer" ] || [ $choice_extra = "e" ]; then
+			echo "implement open-file-explorer-here mode"
+		elif [ $choice_extra = "recover" ] || [ $choice_extra = "r" ]; then
+			clear; 
+			echo "copying files to origin"
+			read -p "(all) files or (file1 ... fileN):> " selection
+			if [ ! "$selection" = "all" ]; then	
+				IFS=' '; sfiles=("$selection"); fi
+			for filepair in "${filelist[@]}"; do IFS=' ';names=($filepair)
+				if [ ! "${#selection[@]}" -gt 0 ]; then 
+					cp "${names[1]}" "${names[0]}"; fi
+				for sfile in ""${sfiles[@]}""; do
+					if [ "$sfile" = "$(basename ${names[0]})" ]; then 
+						cp "${names[1]}" "${names[0]}"; fi
+				done						
+			done
+			continue
+		elif [ $choice_extra = "jail" ] || [ $choice_extra = "j" ]; then
+			echo "copying files to jail"
+			for filepair in "${filelist[@]}"; do IFS=' ';names=($filepair)
+				new="$jaildir$(basename "${names[0]}")"
+				cp "${names[1]}" "$new" #echo "mv "${names[1]}" "$new""
+			done
+			continue
+		elif [ $choice_extra = 'cleanse' ] || [ $choice_extra = 'c' ]; then
+			echo "WARNING ABOUT TO DELETE:"; printf "%s\n" "${filelist[@]}"
+			read -p 'you sure bud? (y/n) :> ' choice
+			if [ ! $choice = y ]; then continue; fi
+			for filepair in "${filelist[@]}"; do 
+				IFS=' ';names=($filepair);rm "${names[1]}" #:-${names[0]}}"
+			done
+			rm "${memarr[$choice_digits]}"
+			#memarr=($(find "$rmdirectory" -type f -name ".trashmemory"))
+			{ find "$rmdirectory" -type d -empty -delete; }
+			echo "Cleansing complete"; makememories; 
+			clear; displaymems; displayhelp; continue
+		else echo "error: ($choice) is not a valid command."
+		fi
+#################      END OF   VALID DIGIT   UTILIZATION      #################
+################################################################################
+	displayhelp
+	debug "-undo menu loop"
+done
+}
+################################################################################
+###############################    END   UNDO    ###############################
+#############################    END   UNDO    #################################
+###########################    END   UNDO    ###################################
+################################################################################
+pruneold () { #PRUNEOLD PRUNEOLD PRUNEOLD PRUNEOLD PRUNEOLD PRUNEOLD PRUNEOLD
+	read -d '$EOF' -a trashdirectories <<< "$(find "$rmdirectory" -type d)"
+	olddirectories=() #will delete all files in these directories
+	migrationdirectories=() #will migrate files up, and delete empty directories
+	cutstring="$(date -d "$eraseinterval" "+$datedirformat")"
+	migstring="$(date -d "$migrateinterval" "+$datedirformat")"
+	IFS='/' read -a cutfields <<< "$cutstring"
+
+	for dir in "${trashdirectories[@]}"; do
+		#skip non-file-holding dirs
+		read -a datecols <<< "${dir[*]//[!0-9]/' '}" 
+		if [ ${#datecols[@]} -lt ${#cutfields[@]} ]; then continue; fi
+		#convert dir-hierarchy into a date string & compare to cut off date
+		datestring=''; for d in ${datecols[@]}; do datestring+="$d/"; done
+		datestring=${datestring[@]:0:$((${#datestring}-1))}
+		debug "c:"$cutstring" d:"$datestring""
+		#comparison moment
+		if [[ "$cutstring" > "$datestring" ]]; then olddirectories+=("$dir")
+		elif [[ "$migratestring" > "$datestring" ]]; then
+				migrationdirectories+=("$dir"); fi
+	done
+	#erase all files in old directories
+	for old in ${olddirectories[@]}; do
+		if [ "$dry" = "true" ]; then 
+			echo "rm $(find "$old" -type f)"; echo
+		else 
+			/bin/rm $(find "$old" -type f)
+		fi
+	done
+	for migrant in ${migrationdirectories[@]}; do
+		echo "directory migration not yet implemented. BREAKing"
+		break
+	done
+	#find and delete empty directories after rm-ing their files.
+	if [ "$dry" = "true" ]; then 
+		echo "find "$rmdirectory" -type d -empty -delete"
+	else
+		{ find "$rmdirectory" -type d -empty -delete; }
+	fi
+}
+nuke () { #NUKE NUKE NUKE NUKE NUKE NUKE NUKE NUKE NUKE NUKE NUKE NUKE NUKE NUKE
+	groundzero="$(realpath "$1")"
+	filecount="$(find "$groundzero" -type f | wc -l)"
+	dircount="$(find "$groundzero" -type d | wc -l)"
+	printf "%s\n" "Will recursively delete all files in:"
+	printf "%b\n" "$groundzero\n\t\t IS THAT OK!?? (y/n)"
+	read -p '>' choice; if [ ! $choice = 'y' ]; then exit 0; else
+	echo "DELETING -- $dircount directories, $filecount files --"
+	echo "IT CANNOT BE UNDONE. ok?!?? (y/n)"; fi
+	read -p '>' choice; if [ ! $choice = 'y' ]; then exit 0; fi
+	echo "ok here we go :)"
+	{ /bin/rm rm --preserve-root -rf -- "$1"*; } && rm -dr "$1"
+	if [ "$1" = "$rmdirectory" ]; then mkdir --parents "$rmdirectory"; fi
+	if [ "$1" = "$jaildir" ]; then mkdir --parents "$jaildir"; fi
+	exit 0
+}
+
+dishelp () {
+printdash "   rmcarefully <--options/-o> <filepaths>   "
+printf "%b\n" "DEFAULT\t--remove/-r\t<file> <...> <file>"
+printf "%b\n" "\t--prune/-p\twill remove old files from (\$rmdirectory)."
+printf "%b\n" "\t\t\tcurrent def of 'old': $eraseinterval."
+printf "%b\n" "\t--undo/-u\tlaunch interactive undo-delete mode."
+printf "%b\n" "\t--dry\tdry flag set means files will not actually be affected."
+printf "%b\n" "\t--nuke\twill **perma** delete directories given."
+printdash
+}
+################################################################################
+##################################  START   ####################################
+################################################################################
+
+while [ -n "$1" ]; do
+	if [ "$1" = "--nuke" ]; then
+		groundzero="${2:-$rmdirectory}"
+		nuke "$groundzero"
+		exit 0
+	fi
+	if [ "$1" = "--dry" ]; then dry=true; shift; continue; fi
+
+	if [ "$1" = "--now" ]; then now=${2}; debug "n:$now"; shift; shift; continue
+	fi
+	#each flag is responsible for calling exit after running its function
+	if [ "$1" = "--prune" ] || [ "$1" = "-p" ]; then
+		pruneold; exit 0
+	fi
+	if [ "$1" = "--undo" ] || [ "$1" = "-u" ]; then
+		undo "$2"; exit 0
+	fi
+	if [ "$1" = "--remove" ] || [ "$1" = "-r" ]; then
+		shift; #this can't be the way lol
+	fi
+	if [ "$#" -gt 0 ]; then
+		remove "$@"; exit 0
+	fi
+done
+dishelp
+################################################################################

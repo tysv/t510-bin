@@ -1,0 +1,173 @@
+#!/usr/bin/env python3
+
+import sys, time, random
+import os
+
+import PySimpleGUI as sg
+#########################################
+# 	BETA TEST OF NEW WRITE DRAW MODEL   #
+#########################################
+
+"""
+STATE OF AFFAIRS
+
+the current update-write model is hella flawed. I forgot the idea i had earlier.
+now: draws new rectangles with every single pass of the for loop
+    problem: each rectangle is an object that needs to be tracked
+solution:
+    the reason I had the "r,c" data structure: a dictionary of "on" squares.
+    on_square['r;c']=id_number
+    now can turn off (del) "on" squares & draw new ones when they are activated
+        the update function should output (display_list) a list of coordinates 
+        undergoing **modification**
+        r;c = turn this one on			id_number=delete this thing
+
+"""
+
+########################## CONWAY ##########################
+def getState(grid, row, col):
+    wrap_r=len(grid)
+    wrap_c=len(grid[0])
+    center=grid[row][col]
+    neighbors=0
+    neighbors += grid[(row-1)%wrap_r][(col+1)%wrap_c]
+    neighbors += grid[(row-1)%wrap_r][(col)%wrap_c]
+    neighbors += grid[(row-1)%wrap_r][(col-1)%wrap_c]
+    neighbors += grid[(row+1)%wrap_r][(col+1)%wrap_c]
+    neighbors += grid[(row+1)%wrap_r][(col)%wrap_c]
+    neighbors += grid[(row+1)%wrap_r][(col-1)%wrap_c]
+    neighbors += grid[row%wrap_r][(col+1)%wrap_c]
+    neighbors += grid[row%wrap_r][(col-1)%wrap_c]
+    #reproduction/death rules
+    if ( (neighbors < 2) or (neighbors > 3) ):
+        if center == 1: return -1
+        else: return 0
+    elif ( (neighbors == 2) and (center != 0) ):
+        if center == 1: return 1
+        elif center == 0: return 9
+    elif ( neighbors == 3 ):
+        if center == 1: return 1
+        elif center == 0: return 9
+    else:
+        if center == 1: return -1
+        else: return 0
+#uses the old grid to generate the next generation of cells
+#stepGrid(grid) ---> new_grid
+def stepGrid(grid):
+    rows, cols = (len(grid), len(grid[0]))
+    result= [ [0]*cols for r in range(rows)]; changes_list=[]
+    for r in range(rows):
+        for c in range(cols):
+            result[r][c]=getState(grid,r,c)
+    return result
+#returns a randomly seeded grid
+#seed=percentage of cells which start alive
+def randomSeedGrid(rows, cols, seed=20):
+    result = [ [0]*cols for r in range(rows)]
+    seed=int((rows * cols) * (seed/100))
+    for i in range(seed):
+        result[random.randint(0,rows-1)][random.randint(0,cols-1)]=9
+    return result
+#places a pattern in the center of grid, reading from file.
+def loadPatternFromFile(filename="block"):
+	#check directory exists
+	#check filename is valid - if includes slashes treat as full path
+	patternfile= open(f'{pattern_location}', 'r')
+	lines=patternfile.readlines()
+	index=-1; pattern_arr=[]; pattern_grid=[]
+	for line in lines:
+		if line[0]=="#" or line[0]=="!": continue
+		else:
+			pattern_grid+=lineF
+#corner defined as (X,Y) tuple of top left corner
+def overlayGrids(base, layer, corner=(0,0)):
+	print
+			
+#places a pattern in the center of grid, reading from file.
+def randomSeedPattern():
+	filename=random.choice(os.listdir(pattern_dir))
+	return filename
+	result=loadPatternFromFile()
+		
+#######################   start gui   #######################
+def updateGraph():
+    for r in range(cheight):
+        for c in range(cwidth):
+            if grid[r][c] == 9: #turning on cell
+                top_left=       (c*cell_size, r*cell_size)
+                bottom_right=   (top_left[0]+cell_size, top_left[1]+cell_size)
+                drawn_cells[f'{r},{c}']=graphy.draw_rectangle(
+                			top_left, bottom_right, fill_color='white')
+                grid[r][c] = 1
+            elif grid[r][c] < 0:
+                graphy.delete_figure(drawn_cells[f'{r},{c}'])
+                del drawn_cells[f'{r},{c}']
+                grid[r][c] = 0
+
+                
+args = sys.argv
+if len(args) == 3:
+    cwidth, cheight = (int(args[1]), int(args[2]))
+elif len(args) == 4:
+    cwidth, cheight, cell_size = (int(args[1]), int(args[2]), int(args[3]))
+else:#default graph/gui settings
+    cwidth, cheight, cell_size= (80, 35, 6)
+#making sure the bounds line up nicely with the size of cells chosen
+if (cwidth // cell_size != cwidth / cell_size):
+    cwidth=((cwidth//cell_size) + 1) * cell_size
+if (cheight // cell_size != cheight / cell_size):
+    cheight=((cheight//cell_size) + 1) * cell_size
+gwidth, gheight = (cwidth*cell_size, cheight*cell_size)
+
+sg.theme('DarkAmber')
+"""layout = 
+[
+	[sg.Graph((gwidth, gheight), (0, gheight), (gwidth, 0), key="cgraph")],
+    [sg.Button("ToggleTime"), sg.HorizontalSeparator(), sg.Button("Randomize")]
+]"""
+
+layout = [
+            [sg.Graph((gwidth,gheight), (0,gheight), (gwidth,0), key="cgraph")],
+            [sg.Button("ToggleTime"), sg.Text(text="", size=(7,1),
+            	justification="center",key="-cstate-"), sg.Button("Randomize")],
+            [sg.Button(button_text="Load-Random-Pattern")]
+         ]
+window = sg.Window('Conway', layout, finalize=True)
+window['-cstate-'].expand(expand_x=True)
+graphy=window['cgraph']
+
+drawn_cells={} #    drawn_cells['r;c']='LOGGED ID NUMBER'
+#for r in range(len(grid)): for c in range(len(grid[0])):
+grid=None
+cstate="Randomize"; window["-cstate-"].update(cstate)
+pattern_dir="/home/ty/bin/progresource/conway_patterns/"
+print(randomSeedPattern())
+exit()
+
+    
+while True:  # Event Loop #print(event, values)
+    event, values = window.read(timeout=10)
+    if event == sg.WIN_CLOSED or event == 'Exit':
+        break
+    elif event == 'Load Random Pattern':
+    	cstate="paused"
+    	window["-cstate-"].update(cstate)
+    	grid = randomPattern()
+    	updateGraph()
+    elif event == 'ToggleTime':
+        if cstate == "paused": cstate = "running"
+        elif cstate == "running": cstate = "paused"
+        window["-cstate-"].update(cstate)
+    elif cstate == "Randomize" or event == "Randomize":
+        for cid in drawn_cells.values(): graphy.delete_figure(cid)
+        drawn_cells={}
+        grid = randomSeedGrid(cheight, cwidth, random.randint(1,20))
+        updateGraph()
+        if cstate == 'Randomize': cstate = "running"
+        else: cstate = "paused"
+        window["-cstate-"].update(cstate)
+    if cstate == "running":
+        updateGraph()
+        grid = stepGrid(grid)
+##########################  END GUI  ##########################
+window.close()

@@ -1,0 +1,104 @@
+#!/bin/bash
+
+time_delay=0
+
+sounddir="$HOME/Music/sound-effects/"
+#just my favorites
+shortsounds=("wow.mp3" "punch.mp3" "bonk.mp3" "ding.mp3" \
+"pokemon-levelup.mp3" "mario-coin.mp3")
+sound="${sounddir}${shortsounds["$(($RANDOM % ${#shortsounds[@]}))"]}"
+
+declare -A translator
+translator["s"]=1; translator["sec"]=1; translator["seconds"]=1
+translator["m"]=60; translator["min"]=60; translator["minutes"]=60
+translator["h"]=3600; translator["hr"]=3600; translator["hours"]=3600
+translator["second"]=1; translator["minute"]=60; translator["hour"]=3600
+
+pretty_time_delay=''
+make_delay_pretty () {
+	pretty_time_delay=''
+	t=${time_delay}
+	hs=$(($t / 3600))
+	t=$(($t % 3600))
+	ms=$(($t / 60))
+	t=$(($t % 60))
+	ss="$t"
+
+	if [ $hs -gt 0 ]; then pretty_time_delay+="$hs hour(s) "; fi
+	if [ $ms -gt 0 ]; then pretty_time_delay+="$ms minute(s) "; fi
+	if [ $ss -gt 0 ]; then pretty_time_delay+="$ss second(s) "; fi
+	pretty_time_delay="${pretty_time_delay%' '}."
+}
+
+if [ "$1" = "bell" ] || [ ! -t 1 ]; then
+	$(mpg321 -f 16500 -q "$sound") &
+	exit 0;
+elif [ "$1" = "count" ] || [ "$1" = "stopwatch" ]; then
+	oldtime=$(date +%s)
+	clear
+	while true; do
+		time_delay=$(($(date +%s) - oldtime))
+		make_delay_pretty
+		echo "been counting time for: $pretty_time_delay"
+		sleep 1 && clear
+	done
+	exit 0
+fi
+
+if [ $# -gt 0 ]; then
+	time_delay=0
+	#echo "\$1:$1"
+	while [ -n "$1" ]; do
+		unit="${1//[0-9]/}"
+		num="${1//[A-z]/}"
+		#echo "unit:$unit num:$num"
+		#unlabeled numbers assumed to be seconds
+		if [ -z "$unit" ] && [ "$num" -gt 0 ]; then unit="s"; fi
+		#if no num, or bad unit, reset time_delay and get out
+		if [ -z "${translator["$unit"]}" ]; then
+			echo "breaking"
+			time_delay=0; break
+		fi
+		time_delay=$(( $time_delay + $(($num * ${translator["$unit"]})) ))
+		shift
+	done
+	if [ "$time_delay" -gt 0 ]; then
+		make_delay_pretty #sets pretty_time_delay from the raw seconds
+		echo "will sleep for $pretty_time_delay"
+	else 
+		echo "timerty:error:bad input (token:$1)"
+		exit 1
+	fi
+else
+	echo "hey bro normal usage is easy. no options, just put in the time."
+	echo "<<timerty 5m 1s>> or <<timerty 1s 1s 1s>> or <<timerty 1000h 1s>> etc"
+	exit 0
+fi
+
+if [ $time_delay -gt 0 ]; then
+	#carriage return: 						   echo -ne '\r'	
+	#erases the entire line your cursor is on: echo -ne '\33[2K'
+	printmessage="[         ]"
+	#sleep_delay=$(( $time_delay / 10 ))
+	sleep_delay=$( echo "scale=2; "$time_delay / 10"" | bc )
+	for i in {1..10}; do
+		echo -ne '\r'; echo -ne '\033[2K'
+		printf "%s" "$printmessage"; echo -ne '\r'
+		#used to be sleep, but now the script can be interrupted early
+		read -s -p '' -n 1 -t $sleep_delay interrupt
+		if [ "$interrupt" = "p" ]; then
+			echo -ne '\r'; echo -ne '\033[2K'; printf "%s" "[PAUSED]"
+			read -sp '' -n 1 _ #wait for response and go again
+			continue
+		fi
+		if [ -z "$interrupt" ]; then
+			printmessage="[$(strbuilder "$i" '.')$(strbuilder $((9-i)) ' ')]"
+		else break; fi
+	done
+	echo ''
+	#-f sets volume [0-32k] -q suppresses text output of mpg123
+	if [ -z "$interrupt" ]; then mpg321 -f 16500 -q $sound; fi
+else
+	echo "timer not triggered"
+fi
+exit 0

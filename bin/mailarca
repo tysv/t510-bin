@@ -1,0 +1,113 @@
+#!/bin/bash
+
+# receive and show messages in the terminal 
+# add messagecount to terminal
+# add date-triggered "delivery"
+file_self="$(realpath "$0")"
+dir_self="$(dirname "$self")"
+script_name="mailarca"
+dir_in="$HOME/.config/ty/$script_name/inbox/"
+dir_out="$HOME/.config/ty/$script_name/outbox/"
+file_config="$HOME/.config/ty/$script_name"
+debugflag=true
+
+if [ ! -f "$file_config" ]; then #initialize
+	mkdir --parents "$dir_in"; mkdir --parents "$dir_out"; touch "$file_config"
+fi
+
+error () { echo "error:mailarca: $1"; exit ${2:-1}; }
+debug () { if [ "$debugflag" = "true" ]; then echo "$1"; fi; }
+
+add () { #echo "make new message file based on input args"
+	IFS=$'::' read -a parts <<< "$1"
+	date="${parts[0]:-"yesterday"}"
+	date_translate=$(date -d "$date" +%s)
+	debug "p#:${#parts[@]} p:${parts[@]}"
+	if [ ! "$?" = 0 ]; then error "improperly formatted date"; fi
+	message="${parts[2]}"
+	newfile="${dir_out}/$date_translate"
+	echo "$message" > "$newfile"
+}
+
+getcount () {
+	shopt -s nullglob
+	count=$( echo ${dir_in}* | wc -w)
+	printf "%s" "$count"
+	shopt -u nullglob
+}
+
+readall () {
+	for file in "${dir_in}"*; do
+		if [ -f $file ]; then 
+			printf "$file: %s\n" "$(cat "$file")"
+		fi
+	done
+}
+
+pop () {
+	for file in "${dir_in}"*; do
+		if [ -f $file ]; then 
+			printf "$file: %s\n" "$(cat "$file")"
+			echo "rm $file"
+		fi
+	done
+}
+
+croncheck () {
+	now=$(date +%s)
+	for file in "${dir_out}"*; do
+		name="${file//*\//}"
+		if [ "$name" -lt "$now" ]; then mv "$file" "${dir_in}$name"; fi
+	done
+}
+
+launch () {
+	echo "simple interactive mode to read and delete messages"
+	echo "instead of only deleting, have alt-move to todo-list?"
+}
+
+printhelptext () {	
+	printf "%s\n" "$(strbuilts --center '     MAILarca     ')"
+	printf "%s\n" "OPTIONS: --pop, --croncheck --launch --help"
+	printf "%s\n" 'ENTRY: $ mailarca "<trigger date>"::<message>'
+	printf "%s\n" "EX: mailarca 'Jan 01 1970::wake up Babe its Epoch Day'"
+	printf "%b\n" "\t--pop\t\tprints and deletes messages in the outbox"
+	printf "%b\n" "\t--croncheck\tchecks and moves files: outbox --> inbox"
+	printf "%b\n" "\t--skim\t\treads first line from each message"
+	printf "%b\n" "\t--launch\tstart the interactive mode"
+	printf "%b\n" "\t--readall\tprints all the outbox messages"
+}
+
+while [ -n "$1" ]; do
+	case "$1" in
+		-h|--help)
+			printhelptext
+			exit 0
+		;;
+		-g|--getcount) 
+			getcount
+		;;
+		-p|--pop)
+			pop
+		;;
+		-a|--add) #echo "accept: add new message to outbox"
+			shift
+			echo "$*"
+			add "$*"
+			exit 0
+		;;
+		-l|--launch)
+			echo "launch: start interactive mode"
+		;;
+		-c|--cronjob)
+			croncheck
+		;;
+		-r|--read)
+			readall
+		;;
+		*)
+			echo "no option chosen"
+		;;
+	esac
+	shift
+done

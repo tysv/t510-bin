@@ -1,0 +1,59 @@
+#!/bin/bash
+
+#MAKES STARS IN TERMINAL WOW V PRETTY
+tput civis
+clear
+
+rows=$(tput lines)
+cols=$(tput cols)
+
+chances="${1:-20}"  #
+twinkle_chance="${2:-20}"
+
+
+#if [ $# = 2 ]; then
+#	chances=$1
+#	twinkle_chance=$2
+#fi
+
+twinklers=()
+#nontwinklers=()
+
+for c in $(seq 0 $cols); do
+	for r in $(seq 0 $rows); do
+		if [ $(($RANDOM % $chances)) -eq 0 ]; then
+			tput cup $r $c
+			echo -n "."
+			#make some of them twinkle
+			if [ $(($RANDOM % $twinkle_chance)) -eq 0 ]; then
+				twinklers+=("$r;$c")
+			fi 
+			#else
+				#nontwinklers+=("$r;$c")
+			#fi
+		fi
+	done
+done
+
+running=true
+inkey=""
+choiceList=('.' ',' '*' '+' 'o' ' ')
+while true; do
+	read -n 1 -t .005 inkey
+	if [ ! "$inkey" == "" ]; then break; fi
+	for i in ${twinklers[@]}; do
+		if [ $(($RANDOM % $twinkle_chance)) -eq 0 ]; then
+			coords=(${i//;/" "})
+			tput cup ${coords[0]} ${coords[1]}
+			if [ $(($RANDOM % $chances)) -eq 0 ]; then
+				choice=$(($RANDOM % ${#choiceList[@]}))
+				echo -n "${choiceList["$choice"]}"
+			fi
+		fi
+	done
+done
+
+clear
+tput cup $rows 0
+tput cnorm
+exit 0

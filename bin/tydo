@@ -1,0 +1,228 @@
+#!/bin/bash
+
+							#print list of tasks#
+
+#add new task - get list of quotes about gettin stuff doneee kid and print one like 11% of the time.#remove task - Some kind of animation reward for sure. or maybe do quotes here as award?
+
+#.todo variables to track per task:
+#	task-message, date-added, ***deadline (optional)***
+
+#flist ---> task array
+updatetasks () {
+	tasks=()
+	while read -r line; do
+		#IFS=";" read -a words <<< "$line"
+		tasks+=("$line")
+	done < "$flist"
+}
+#adds contents of task to .tydo file
+addtask () {
+	entry="$(echo -n "$(date +%m.%d.%y);")"
+	entry+="$*"
+	echo "$entry" >> "$flist"
+	#flistlines="$(cut -d ' ' -f 1 <<< "$(wc -l $flist)")"
+	#echo "$flistlines: $entry"
+}
+#deletes task position-N
+deltask () {
+	sed -si "$1"d "$flist"
+}
+
+#prints argument centered in a dashed line (width=term width)
+#if no argument, prints a dash line width of terminal
+printdash () {
+	term_w="$(tput cols)"
+	dashline=$( strbuilder "$term_w" '-')
+	halflength="$(( (term_w - ${#1}) / 2 ))"
+	halfdash="${dashline[*]:0:$halflength}"
+	if [ $((${#1}/2)) -eq 0 ]; then optional='-'
+	else optional=''; fi
+	printf "%s\n" "$halfdash$1$halfdash$optional"
+}
+distags () {
+	grep -io -E "[[:alnum:]]*[:]{2}[[:space:]]{1}" < "$flist"
+}
+distask () {
+	term_w="$(tput lines)"; term_c="$(tput cols)"
+	tab=' '; taskcount=1; numtasks=${#tasks[@]}
+	printdash "   TASKS   "
+	for line in "${tasks[@]}"; do
+		IFS=";" read -ra parts <<< "$line"
+		zeropad="$(strbuilder $((${#numtasks} - ${#taskcount})) 0)"
+		tasklabel="${zeropad}${taskcount}${tab}${parts[0]}${tab}"
+		taskcontent="${parts[*]:1}"
+		
+		spacepad="$(strbuilder ${#tasklabel} ' ')"
+		colw=$((term_c - ${#spacepad})); start=0
+		
+		for _ in $(seq 0 $((${#taskcontent} / colw))); do
+			precut="${taskcontent:$start:$colw}"; spacecut="${precut% *}"
+			offset="$((${#precut} - ${#spacecut}))"
+			#detect an overly long word and handle it differently
+			#can be adjusted to '-' separate 'words' more often
+			#scale is 2-66, basically
+			if [ $offset -gt 10 ]; then
+				spacecut="${precut:0:-1}-"; 
+				offset=1
+			fi
+			if [ $((start + colw)) -gt ${#taskcontent} ] || \
+			[ $offset -gt $colw ]; then
+				offset=0; spacecut="$precut"
+			fi
+			#echo "$precut";	echo "$spacecut"; exit 0
+			printf "%s\n" "${tasklabel:-$spacepad}${spacecut# }"
+			tasklabel=''; start=$((start + colw - offset))
+		done
+		
+		taskcount=$((taskcount+1))
+	done
+}
+backup () {
+	d=$(date +%m_%d_%y)
+	cp "$flist" "/home/$USER/bin/.tydo_backup$d"
+}
+gearch () {
+	if [ -z "$1" ]; then 
+		echo "Give me a term to search for brochacho"; exit 0; fi
+	tmpspot="$HOME/tmp/.tydosearch"
+	printf "%s\n" "$(grep -i "[^A-z0-9]$1[^A-z0-9]" "$flist")" > "$tmpspot"
+	flist="$tmpspot"
+	updatetasks
+	if [ ${#tasks[0]} -gt 1 ]; then distask
+	else printf "%s\n" "No notes containing the word <$1>"; fi
+}
+fearch () { #copy paste of GEARCH () with/out the bracket requirements	
+	if [ -z "$1" ]; then 
+		echo "Give me a term to search for brochacho"; exit 0; fi
+	tmpspot="$HOME/tmp/.tydosearch"
+	printf "%s\n" "$(grep -i "$1" "$flist")" > "$tmpspot"
+	flist="$tmpspot"
+	updatetasks
+	if [ ${#tasks[0]} -gt 1 ]; then distask
+	else printf "%s\n" "No notes containing the word <$1>"; fi
+}
+###############################################################################
+###############################################################################
+###########################    END  OF  FUNCTIONS    ##########################
+###############################################################################
+###############################################################################
+#active=false unused???
+verbose=false
+force=false
+mode="add"
+
+flist="$HOME/bin/.tydo-list"
+tasks=()
+updatetasks
+
+#	PARSE OPTIONS
+while [ ! "$1" = "" ]; do
+	key="$1"
+	case $key in
+		-b|backup|-backup|--backup)
+			backup
+			exit 0
+		;;
+		-h|help|-help|--help)
+			printf "Tydo is a todo-list tracking script!\n"
+			printf "Calling w/out options displays the list of tasks.\n"
+			printf "  tydo -t/--tags\tPrints tags present in todo list.\n"
+			printf "  tydo -e\t\tOpens \"$(basename "$flist")\" with nano\n"
+			printf "  tydo -a <args>\tRecords tasks. Default Behavior.\n"
+			printf "  tydo -d <num>\tDeletes tasks by display number.\n"
+			printf "  tydo -s <arg>\tPrints tasks w/your word discretely.\n"
+			printf "  tydo -fs <arg>\tPrints tasks w/your word anywhere.\n"
+			
+			exit 0
+			shift
+		;;
+		-s|-search|--search)
+			if [ -n "$2" ]; then
+			gearch "$2"; fi	
+			exit 0
+			shift
+		;;
+		-fs|-fsearch|--fuzzysearch)
+			if [ -n "$2" ]; then
+			fearch "$2"; fi	
+			exit 0
+			shift
+		;;
+		-e|-edit|--edit)
+			mode="edit"
+			shift
+		;;
+		-f|-force|--force)
+			force=true
+			echo "force mode not implemented yet."
+			exit 0
+			shift
+		;;
+		-a|-add|--add)
+			mode="add"
+			shift
+		;;
+		-v|-verbose|--verbose)
+			echo "verbose mode not implemented yet."
+			verbose=true
+			exit 0
+			shift
+		;;
+		-d|-delete|--delete)
+			mode="delete"
+			shift
+		;;
+		-i|-interactive|--interactive)
+			echo "interactive mode not implemented yet."
+			exit 0
+			shift
+		;;
+		-t|-tags|--tags)
+			distags
+			exit 0
+			shift
+		;;
+		*) #the -=else=- option. Save for later restoration
+			positionals+=("$1")
+			shift
+		;;
+	esac
+done
+
+
+#restores any (non-optional) positional arguments
+set -- "${positionals[@]}"
+
+
+if [ $# -eq 0 ]; then
+	if [ $mode = "edit" ]; then
+		nano "$flist"
+		exit 0
+	else
+		distask
+		exit 0
+	fi
+fi
+
+if [ $mode = "add" ]; then
+	addtask "$*"
+	printf "%s: " "$(wc -l $flist | cut -d $' ' -f 1)"
+	sed -n '$p' "$flist"
+fi
+
+#loopable options
+previous=()
+while [ $# -gt 0 ]; do
+	if [ $mode = "delete" ]; then
+		offset=0
+		#check indexes of all already-deleted items against current index
+		for deleted in "${previous[@]}"; do
+			#shift to new relative position, if prev index was below current
+			if [ "$deleted" -lt $1 ]; then let offset++; fi
+		done
+		index=$(($1 - offset))
+		deltask "$index"
+		previous+=("$index")
+	fi
+	shift
+done

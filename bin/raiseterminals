@@ -1,0 +1,28 @@
+#!/bin/bash
+
+tmpspot="$HOME/tmp/.$0$(date +%s)"
+wmctrl -l > "$tmpspot"_l
+wmctrl -d > "$tmpspot"_d
+currentdesk=100000000000
+while read line; do
+	read -a words <<< "$line"
+	if [ "${words[1]}" = '*' ]; then
+		currentdesk="${words[0]}"; break
+	else echo "${words[1]}"
+	fi
+done < "$tmpspot"_d
+
+#parse list and collect ID #'s for all terminal windows
+while read line; do
+	read -a words <<< "$line"
+	#echo "${words[@]}"
+	if [ "${words[3]}" = "Terminal" ] && [ "$currentdesk" = "${words[1]}" ]
+		then wmctrl -i -a "${words[0]}"; fi
+	#echo "${words[3]}"; echo "$currentdesk:${words[1]}"
+done < "$tmpspot"_l
+#loop: wmctrl -i -a ID#
+#erase tmpspot file
+#exit
+
+rm "${tmpspot}"*
+
