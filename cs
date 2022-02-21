@@ -13,8 +13,8 @@ if [ ! "$#" -eq 1 ]; then
 	echo -e "\tcs <num> means \"cd ..\" num times."; return 2
 fi
 
-teleport () { 
-	debug "teleport arg: $1"; builtin cd "$1" && ls;
+teleport () {
+	if [ -n "$1" ] && [ -d "$1" ]; then builtin cd "$1" && ls; fi;
 }
 
 fullpath="$(realpath $1)"
