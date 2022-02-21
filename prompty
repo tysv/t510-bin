@@ -14,51 +14,40 @@
 
 output=''
 exit_code="$?"
-alerts="$(mailarca --getcount)"
-
 
 colorWord () {
-	printf "%s" '\[\033['$1';'$2'm\]'$3'\[\033[m\]'
+	printf "%b" '\001\033['$1';'$2'm\002'
+	printf "%s" "${3}"
+	printf "%b" '\001\033[m\002'
 }
 
-if [ $alerts -gt 0 ]; then
-	colorWord 0 31 "[\[$(mailarca --getcount)\]]"
-fi
-exit 0
 setColor () {
-	output+='\033['$1';'$2'm'
+	printf "%b" '\001\033['$1';'$2'm\002'
 }
 resetColor () {
-	output+='\033[0m'
+	printf "%b" '\001\033[0m\002'
 }
 mailarca_module () {
-	if [ "$alerts" -gt "0" ]; then
-		colorWord 0 31 '[\[$(mailarca --getcount)\]]'
+	alerts=$(mailarca)
+	if [ $alerts -gt 0 ]; then
+		colorWord 0 36 "$alerts"
+		colorWord 0 37 ':'
 	fi
 }
-################################################################################
-while [ $1 ]; do
+
+##########################################################################
+while [ -n "$1" ]; do
 	case $1 in
 		--module|-m)
-			[ $2 = "mailarca" ] && mailarca_module
+			if [ "$2" = "mailarca" ]; then mailarca_module; fi
 			shift 2
+		;;
+		*)
+			shade=$(($RANDOM % 2)); color=$((($RANDOM % 7) + 30))
+			colorWord $shade $color "$1"
+			shift
 		;;
 	esac
 done
 
-#echo -e "\e[$1;$2m"\[$3\]"\e[m"
-#exit 0
 
-output+="$(setColor 1 36)"
-output+='${debian_chroot:+($debian_chroot)}'
-output+="$(resetColor)"
-output+="$(colorWord 1 37 '\u@\h:')"
-if [ "$alerts" -gt 0 ]; then
-	output+='\[$(prompty --module mailarca)\]:'
-fi
-output+='\w'
-if [ ! "$exit_code" -eq 0 ]; then
-	colorWord 1 31 '$ '
-else output+='\$ '; fi
-
-printf "%s" "$output"

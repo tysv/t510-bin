@@ -1,19 +1,9 @@
 #!/bin/bash
 
-# receive and show messages in the terminal 
+# receive and show messages in the terminal
 # add messagecount to terminal
 # add date-triggered "delivery"
-file_self="$(realpath "$0")"
-dir_self="$(dirname "$self")"
-script_name="mailarca"
-dir_in="$HOME/.config/ty/$script_name/inbox/"
-dir_out="$HOME/.config/ty/$script_name/outbox/"
-file_config="$HOME/.config/ty/$script_name"
-debugflag=true
 
-if [ ! -f "$file_config" ]; then #initialize
-	mkdir --parents "$dir_in"; mkdir --parents "$dir_out"; touch "$file_config"
-fi
 
 error () { echo "error:mailarca: $1"; exit ${2:-1}; }
 debug () { if [ "$debugflag" = "true" ]; then echo "$1"; fi; }
@@ -35,7 +25,6 @@ getcount () {
 	printf "%s" "$count"
 	shopt -u nullglob
 }
-
 readall () {
 	for file in "${dir_in}"*; do
 		if [ -f $file ]; then 
@@ -78,6 +67,22 @@ printhelptext () {
 	printf "%b\n" "\t--readall\tprints all the outbox messages"
 }
 
+file_self="$(realpath "$0")"
+dir_self="$(dirname "$self")"
+script_name="mailarca"
+dir_in="$HOME/.config/ty/$script_name/inbox/"
+dir_out="$HOME/.config/ty/$script_name/outbox/"
+file_config="$HOME/.config/ty/$script_name"
+debugflag=true
+
+#for the prompt
+[ "$#" -eq 0 ] && { getcount; exit 0; }
+
+
+if [ ! -f "$file_config" ]; then #initialize
+	mkdir --parents "$dir_in"; mkdir --parents "$dir_out"; touch "$file_config"
+fi
+
 while [ -n "$1" ]; do
 	case "$1" in
 		-h|--help)
@@ -102,7 +107,7 @@ while [ -n "$1" ]; do
 		-c|--cronjob)
 			croncheck
 		;;
-		-r|--read)
+		-r|--readall)
 			readall
 		;;
 		*)
