@@ -10,9 +10,9 @@ debug () { if [ "$debugflag" = "true" ]; then echo "$1"; fi; }
 
 add () { #echo "make new message file based on input args"
 	IFS=$'::' read -a parts <<< "$1"
-	date="${parts[0]:-"yesterday"}"
+	date="${parts[0]:-"now"}"
 	date_translate=$(date -d "$date" +%s)
-	debug "p#:${#parts[@]} p:${parts[@]}"
+	#printf "<%s> " "${parts[@]}"
 	if [ ! "$?" = 0 ]; then error "improperly formatted date"; fi
 	message="${parts[2]}"
 	newfile="${dir_out}/$date_translate"
@@ -27,7 +27,7 @@ getcount () {
 }
 readall () {
 	for file in "${dir_in}"*; do
-		if [ -f $file ]; then 
+		if [ -f "$file" ]; then
 			printf "$file: %s\n" "$(cat "$file")"
 		fi
 	done
@@ -37,17 +37,28 @@ pop () {
 	for file in "${dir_in}"*; do
 		if [ -f $file ]; then 
 			printf "$file: %s\n" "$(cat "$file")"
-			echo "rm $file"
+			rm $file
 		fi
 	done
 }
 
-croncheck () {
+skim () {
+	width=$(tput cols)
+	for file in "${dir_in}"*; do
+		message="$(cat $file)"
+		name="${file//*\//}"
+		length=$(($width-${#name}-8))
+# strbuilder -n $(($width-10)) "${file//*\//}: $(head -n 1 $file)" -t nl
+		echo "${file//*\//}: ${message[*]:0:$length}..."
+	done
+}
+
+cronjob () {
 	now=$(date +%s)
 	for file in "${dir_out}"*; do
 		name="${file//*\//}"
-		if [ "$name" -lt "$now" ]; then mv "$file" "${dir_in}$name"; fi
-	done
+		if [ "$name" -lt "$now" ]; then mv "${file}" "${dir_in}$name"; fi
+done
 }
 
 launch () {
@@ -55,13 +66,13 @@ launch () {
 	echo "instead of only deleting, have alt-move to todo-list?"
 }
 
-printhelptext () {	
+printhelptext () {
 	printf "%s\n" "$(strbuilts --center '     MAILarca     ')"
 	printf "%s\n" "OPTIONS: --pop, --croncheck --launch --help"
 	printf "%s\n" 'ENTRY: $ mailarca "<trigger date>"::<message>'
 	printf "%s\n" "EX: mailarca 'Jan 01 1970::wake up Babe its Epoch Day'"
 	printf "%b\n" "\t--pop\t\tprints and deletes messages in the outbox"
-	printf "%b\n" "\t--croncheck\tchecks and moves files: outbox --> inbox"
+	printf "%b\n" "\t--cronjob\tchecks and moves files: outbox --> inbox"
 	printf "%b\n" "\t--skim\t\treads first line from each message"
 	printf "%b\n" "\t--launch\tstart the interactive mode"
 	printf "%b\n" "\t--readall\tprints all the outbox messages"
@@ -97,18 +108,20 @@ while [ -n "$1" ]; do
 		;;
 		-a|--add) #echo "accept: add new message to outbox"
 			shift
-			echo "$*"
 			add "$*"
 			exit 0
 		;;
 		-l|--launch)
-			echo "launch: start interactive mode"
+			launch
 		;;
 		-c|--cronjob)
 			croncheck
 		;;
 		-r|--readall)
 			readall
+		;;
+		-s|--skim)
+			skim
 		;;
 		*)
 			echo "no option chosen"

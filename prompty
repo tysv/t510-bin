@@ -34,13 +34,16 @@ mailarca_module () {
 		colorWord 0 37 ':'
 	fi
 }
+date_module () {
+	colorWord 0 32 "$(date +%R)"
+}
 
-##########################################################################
+###########################################################################
 while [ -n "$1" ]; do
 	case $1 in
 		--module|-m)
-			if [ "$2" = "mailarca" ]; then mailarca_module; fi
-			shift 2
+			if [ "$2" = "mailarca" ]; then mailarca_module; shift 2
+			elif [ "$2" = "date" ]; then date_module; shift 2; fi
 		;;
 		*)
 			shade=$(($RANDOM % 2)); color=$((($RANDOM % 7) + 30))
