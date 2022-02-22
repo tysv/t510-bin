@@ -3,6 +3,7 @@
 #makes X of Y
 if [ "$#" -le 0 ]; then printf "%s\n" "\
 ------------------   strbuilder <flags> <num> <elements>   ---------------------
+USAGE: 	To create strings by repeating inputs to fill full length specified.
 default example: strbuilder 12 str --> 'strstrstrstr'
   strbuilder --number/-n <num>		prints str of NUM length
   strbuilder --repeat/-r <num>		prints str of NUM repetitions
@@ -11,7 +12,6 @@ default example: strbuilder 12 str --> 'strstrstrstr'
      SPECIAL for -s/-t: nl = $'\n'	tab = $'\t'
   UNFLAGGED ARGS added to <str_elements> UNLESS num is currently 0"
 exit 0; fi
-
 
 num=0; stamp=''; seperator=''; terminator=''
 repeatflag=false; numberflag=true
@@ -35,18 +35,13 @@ while [ "$#" -gt 0 ]; do
 		else terminator+="$2"; fi
 		shift 2; continue
 	fi
-	if [ "$1" = "--dash" ]; then
-		echo "not sure about combining these things"; exit 0
-		printdash "$2"; shift; 
-		if [ -z "$2" ]; then shift; fi
-		continue
-	fi
+	if [ "$1" = "--dash" ]; then echo "moved to ~/bin/strbuilts"; exit 0; fi
 	#if no flags caught
 	if [ "$num" -eq 0 ] && [ "${1//[0-9]/}" = '' ]; then 
 		num="$1"; shift; continue; fi
 	stamp+="$1"; shift
 done
-#don't make none of something
+# dont make none of something
 if [ "$num" -lt 1 ] || [ "$stamp" = '' ]; then printf ''; exit 0; fi
 
 message=''
@@ -71,18 +66,3 @@ elif [ "$repeatflag" = "true" ]; then
 	printf "%s" "$message$terminator"
 fi
 exit 0
-
--------
-
-
-#prints argument centered in a dashed line (width=term width)
-#if no argument, prints a dash line width of terminal
-printdash () {
-	term_w="$(tput cols)"
-	dashline=$( strbuilder "$term_w" '-')
-	halflength="$(( (term_w - ${#1}) / 2 ))"
-	halfdash="${dashline[*]:0:$halflength}"
-	if [ $((${#1}/2)) -eq 0 ]; then optional='-'
-	else optional=''; fi
-	printf "%s\n" "$halfdash$1$halfdash$optional"
-}
