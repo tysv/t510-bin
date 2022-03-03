@@ -13,9 +13,19 @@ default example: strbuilder 12 str --> 'strstrstrstr'
   UNFLAGGED ARGS added to <str_elements> UNLESS num is currently 0"
 exit 0; fi
 
+setforecolor () {
+	f_color="$(tput setaf "$1")" || { echo "error: setforecolor()"; exit 1; }
+}
+setbackcolor () {
+	g_color="$(tput setab "$1")" || { echo "error: setbackcolor()"; exit 1; }
+}
+
+resetcolors () { printf "$(tput sgr0)"; }
+
 resetpress () {
 	num=0; stamp=''; seperator=''; terminator=''
 	repeatflag=false; numberflag=true
+	resetcolors
 }
 
 printingpress () {
@@ -25,9 +35,6 @@ printingpress () {
 	elif [ "$numberflag" = "true" ]; then
 		length="$(( $num / ${#stamp} ))"
 	fi
-
-	#echo "stamp:$stamp;sep:${seperator@Q};length:$length"
-
 	count=0
 	for index in $(seq 0 "$length"); do
 		message+="$stamp$seperator"
@@ -36,44 +43,46 @@ printingpress () {
 	if [ "$numberflag" = true ]; then
 		remainder="$(($num % ($count * ${#stamp})))"
 		message+="${stamp:$remainder}$separator"
-		printf "%s" "${message:0:$remainder}$terminator"
+		printf "%b" "${message:0:$remainder}$terminator"
 	elif [ "$repeatflag" = "true" ]; then
-		printf "%s" "$message$terminator"
+		printf "%b" "$message$terminator"
 	fi
 }
 
 resetpress
-
 while [ "$#" -gt 0 ]; do
-	if [ "$1" = "-r" ] || [ "$1" = "--repeat" ]; then #echo "rflag"
-		repeatflag="true"; numberflag="false"; 
-		shift; continue; fi
-	if [ "$1" = "-n" ] || [ "$1" = "--number" ]; then #echo "nflag"
+
+case "$1" in
+	-r|--repeat)
+		repeatflag="true"; numberflag="false"
+	;;
+	-n|--number)
 		numberflag="true"; repeatflag="false"
-		shift; continue; fi
-	if [ "$1" = "-s" ] || [ "$1" = "--seperator" ]; then #echo "sflag"
+	;;
+	-s|--seperator)
 		if [ "$2" = "nl" ]; then seperator+=$'\n'
 		elif [ "$2" = "tab" ]; then	seperator+=$'\t'
 		else seperator+="$2"; fi
-		shift 2; continue
-	fi
-	if [ "$1" = "-t" ] || [ "$1" = "--terminator" ]; then
+		shift
+	;;
+	-t|--terminator)
 		if [ "$2" = "nl" ]; then terminator+=$'\n'
 		elif [ "$2" = "tab" ]; then	terminator+=$'\t'
 		else terminator+="$2"; fi
-		shift 2; continue
-	fi
-	#Allows for multiple calls within same command
-	if [ "$1" = "--" ]; then printingpress; resetpress; shift; continue; fi
-	if [ "$1" = "--dash" ]; then echo "moved to ~/bin/strbuilts"; exit 0; fi
-	#if no flags caught
-	if [ "$num" -eq 0 ] && [ "${1//[0-9]/}" = '' ]; then 
-		num="$1"; shift; continue; fi
-	#detect if brace expansion incoming
-	stamp+="$1"; shift
+	;;
+	--)
+		printingpress; resetpress
+	;;
+	*)
+		if [ "$num" -eq 0 ] && [ "${1//[0-9]/}" = '' ]; then
+			num="$1"; else stamp+="$1"; fi
+	;;
+esac
+shift
 done
 # dont make none of something
 if [ "$num" -lt 1 ] || [ "$stamp" = '' ]; then printf ''; exit 0; fi
 printingpress
 
 exit 0
+
