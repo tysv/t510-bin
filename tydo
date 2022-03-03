@@ -40,7 +40,7 @@ printdash () {
 	printf "%s\n" "$halfdash$1$halfdash$optional"
 }
 distags () {
-	grep -io -E "[[:alnum:]]*[:]{2}[[:space:]]{1}" < "$flist"
+	grep -io -E "[[:alnum:]]*[:]{2}[[:space:]]{1}" < "$flist" | uniq -c
 }
 distask () {
 	term_w="$(tput lines)"; term_c="$(tput cols)"

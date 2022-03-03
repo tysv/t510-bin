@@ -30,7 +30,7 @@ resetColor () {
 mailarca_module () {
 	alerts=$(mailarca)
 	if [ $alerts -gt 0 ]; then
-		colorWord 0 36 "$alerts"
+		colorWord 0 31 "$alerts"
 		colorWord 0 37 ':'
 	fi
 }

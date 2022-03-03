@@ -5,7 +5,7 @@ fpath="$HOME/bin/.cdty"
 if [ ! -e "$fpath" ]; then
 	touch $fpath
 	echo "---->  Initialized cdty directory list. Calling 'cdty -h' now."
-	cdty -h
+	cdty -h; exit 0
 fi
 
 if [ "$#" -eq 0 ]; then

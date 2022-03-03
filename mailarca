@@ -26,20 +26,29 @@ getcount () {
 	shopt -u nullglob
 }
 readall () {
-	for file in "${dir_in}"*; do
+	if [ "$1" = "out" -o "$1" = "outbox" ]; then
+		filelist="$dir_out"; shift;
+	else filelist="$dir_in"; fi
+	for file in "${filelist}"*; do
 		if [ -f "$file" ]; then
-			printf "$file: %s\n" "$(cat "$file")"
+			examine "$file"
 		fi
 	done
 }
 
 pop () {
 	for file in "${dir_in}"*; do
-		if [ -f $file ]; then 
-			printf "$file: %s\n" "$(cat "$file")"
+		if [ -f $file ]; then
+			examine "$file"
 			rm $file
 		fi
 	done
+}
+
+#prints the message inside "$file --> $1" formatted for human readin' nice
+examine () {
+			printf "%s\t" "$(date -d "@${1//*\//}" +%D)"
+			printf "%s\n" "$(cat "$1")"
 }
 
 skim () {
@@ -71,11 +80,11 @@ printhelptext () {
 	printf "%s\n" "OPTIONS: --pop, --croncheck --launch --help"
 	printf "%s\n" 'ENTRY: $ mailarca "<trigger date>"::<message>'
 	printf "%s\n" "EX: mailarca 'Jan 01 1970::wake up Babe its Epoch Day'"
-	printf "%b\n" "\t--pop\t\tprints and deletes messages in the outbox"
-	printf "%b\n" "\t--cronjob\tchecks and moves files: outbox --> inbox"
-	printf "%b\n" "\t--skim\t\treads first line from each message"
-	printf "%b\n" "\t--launch\tstart the interactive mode"
-	printf "%b\n" "\t--readall\tprints all the outbox messages"
+	printf "%b\n" "\t-(-p)op\t\tprints and deletes messages in the outbox"
+	printf "%b\n" "\t-(-c)ronjob\tchecks and moves files: outbox --> inbox"
+	printf "%b\n" "\t-(-s)kim\t\treads first line from each message"
+	printf "%b\n" "\t-(-l)aunch\tstart the interactive mode"
+	printf "%b\n" "\t-(-r)eadall\tprints all the outbox messages"
 }
 
 file_self="$(realpath "$0")"
@@ -100,6 +109,12 @@ while [ -n "$1" ]; do
 			printhelptext
 			exit 0
 		;;
+		-bash|--bashisms)
+			for file in ${HOME}/.bash{rc,_aliases,_functions}; do
+				grep "mailarca" < "$file"
+			done
+			exit 0
+		;;
 		-g|--getcount) 
 			getcount
 		;;
@@ -115,10 +130,10 @@ while [ -n "$1" ]; do
 			launch
 		;;
 		-c|--cronjob)
-			croncheck
+			cronjob
 		;;
 		-r|--readall)
-			readall
+			readall "$2"
 		;;
 		-s|--skim)
 			skim
@@ -129,3 +144,4 @@ while [ -n "$1" ]; do
 	esac
 	shift
 done
+ 

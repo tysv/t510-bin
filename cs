@@ -1,5 +1,5 @@
 #!/bin/bash
-
+#TEST TESTE TESTESTSETSETESTESTESTTEESSTT
 #cd & ls combined
 #fuzzy searches working directory for matches
 #searches up the absolute path for a match -- could fuzzify this too
