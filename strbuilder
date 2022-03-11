@@ -20,12 +20,14 @@ setbackcolor () {
 	g_color="$(tput setab "$1")" || { echo "error: setbackcolor()"; exit 1; }
 }
 
+# this is not without side-effects!!
+# will add some escape codes even if the change is invisible.
+# only call when colors are !!already!! being introduced, or will break scripts
 resetcolors () { printf "$(tput sgr0)"; }
 
 resetpress () {
 	num=0; stamp=''; seperator=''; terminator=''
 	repeatflag=false; numberflag=true
-	resetcolors
 }
 
 printingpress () {
