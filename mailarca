@@ -54,8 +54,10 @@ examine () {
 skim () {
 	shopt -s nullglob
 	width=$(tput cols)
-	filelist=(${dir_in}*)
-	if [ ${#filelist[@]} -eq 0 ]; then echo "inbox empty"; exit 0; fi
+	if [ -z  "$1" ]; then filelist=(${dir_in}*)
+	elif [ "$1" = "in" ]; then filelist=(${dir_out}*)
+	fi
+	if [ ${#filelist[@]} -eq 0 ]; then echo "box is empty"; exit 0; fi
 	for file in "${filelist[@]}"; do
 		message="$(cat $file)"
 		name="${file//*\//}"
@@ -141,7 +143,7 @@ while [ -n "$1" ]; do
 			readall "$2"
 		;;
 		-s|--skim)
-			skim
+			if [ -n "$2" ]; then skim "$2"; shift; else skim; fi
 		;;
 		*)
 			echo "no option chosen"
