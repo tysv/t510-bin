@@ -5,12 +5,17 @@
 # use .suos to change settings
 # place .suos in the same directory as this script.
 
+#boolean flags
 debugging_mode = False
 reset_mode     = False
 verbose_mode   = False
 
-import os, sys, time, glob
+logfile = "/home/ty/automation/reports/suos.log"
+movedfiles = 0
 
+import os, sys, time, glob, logging
+
+logging.basicConfig(filename=f'{logfile}', filemode='a', format='%(name)s - %(levelname)s - %(message)s', level=logging.NOTSET)
 
 ## Go through each label's settings
 ## and move files
@@ -18,7 +23,7 @@ import os, sys, time, glob
 def standard(setting):
     if verbose_mode == True: print("entering standard() function")
     label, destination, count, movarr = setting
-    fileprocess(label, destination, count, movarr)
+    fileprocess(label, destination, count, movarr)    
 
 def reset(setting):
 	
@@ -59,6 +64,7 @@ def fileprocess(label, destination, count, movarr):
         if debugging_mode: print(f'Would do: {file} ---> {newfilepath}')
         else:
             os.rename(file, newfilepath)
+            movedfiles+=1
         
     
 ############################## END OF FUNCTIONS ##############################
@@ -149,5 +155,7 @@ if reset_mode == True:
 else:
     for s in settings:
         standard(s)
-
-
+        
+if (movedfiles > 0):
+	logging.info(f'{time.strftime("%c")}: Moved {movedfiles} files')
+#else: logging.info('TEST') #just for testing when no files to move
