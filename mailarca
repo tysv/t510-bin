@@ -29,6 +29,7 @@ readall () {
 	if [ "$1" = "out" -o "$1" = "outbox" ]; then
 		filelist="$dir_out"; shift;
 	else filelist="$dir_in"; fi
+	if [ ${#filelist[@]} -eq 0 ]; then echo "box is empty"; exit 0; fi
 	for file in "${filelist}"*; do
 		if [ -f "$file" ]; then
 			examine "$file"
@@ -99,7 +100,7 @@ dir_self="$(dirname "$self")"
 script_name="mailarca"
 dir_in="$HOME/.config/ty/$script_name/inbox/"
 dir_out="$HOME/.config/ty/$script_name/outbox/"
-file_config="$HOME/.config/ty/$script_name"
+file_config="$HOME/.config/ty/.${script_name}"
 debugflag=true
 
 #for the prompt
@@ -107,6 +108,7 @@ debugflag=true
 
 
 if [ ! -f "$file_config" ]; then #initialize
+	echo "$file_config"
 	mkdir --parents "$dir_in"; mkdir --parents "$dir_out"; touch "$file_config"
 fi
 
