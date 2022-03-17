@@ -1,10 +1,19 @@
 #!/bin/bash
 
 #makes X of Y
+
+declare -A colormatch=( [red]=196 [orange]=202 [green]=2 [purple]=92 [white]=15 [black]=233	 [blue]=19 [teal]=49 [grey]=244 [gray]=244 [yellow]=226 [gold]=136
+[pink]=9 )
+colorkeys="${!colormatch[@]}"
+colorkeys=${colorkeys//$'\n'/' '}
+
 if [ "$#" -le 0 ]; then printf "%s\n" "\
 ------------------   strbuilder <flags> <num> <elements>   ---------------------
 USAGE: 	To create strings by repeating inputs to fill full length specified.
 default example: strbuilder 12 str --> 'strstrstrstr'
+  strbuilder --colorfore/-cf <arg>	will print font in color given <0-256>
+  strbuilder --colorback/-cb <arg>	will print background of font in color
+  	color args can be an int 0-256, or one of limited builtin english words
   strbuilder --number/-n <num>		prints str of NUM length
   strbuilder --repeat/-r <num>		prints str of NUM repetitions
   strbuilder --seperator/-s <sep_char>	seperate str elements
@@ -14,20 +23,29 @@ default example: strbuilder 12 str --> 'strstrstrstr'
 exit 0; fi
 
 setforecolor () {
-	f_color="$(tput setaf "$1")" || { echo "error: setforecolor()"; exit 1; }
+	color="${colormatch[$1]:-$1}"
+	if [ -n "${color//[0-9]/}" ]; then 
+		echo "error: setforecolor(): $color"; exit 0
+	else f_color="$(tput setaf "$color")"
+	fi
 }
 setbackcolor () {
-	g_color="$(tput setab "$1")" || { echo "error: setbackcolor()"; exit 1; }
+	color="${colormatch[$1]:-$1}"
+	if [ -n "${color//[0-9]/}" ]; then 
+		echo "error: setbackcolor(): $color"; exit 0
+	else g_color="$(tput setab "$color")"
+	fi
 }
 
 # this is not without side-effects!!
 # will add some escape codes even if the change is invisible.
 # only call when colors are !!already!! being introduced, or will break scripts
-resetcolors () { printf "$(tput sgr0)"; }
+resetcolors () { f_color=''; g_color=''; colorflag=false; tput sgr0; }
 
 resetpress () {
 	num=0; stamp=''; seperator=''; terminator=''
 	repeatflag=false; numberflag=true
+	if [ "$colorflag" = "true" ]; then resetcolors; fi
 }
 
 printingpress () {
@@ -42,6 +60,7 @@ printingpress () {
 		message+="$stamp$seperator"
 		count=$((count+1))
 	done
+	if [ "$colorflag" = true ]; then printf "${f_color}${g_color}"; fi
 	if [ "$numberflag" = true ]; then
 		remainder="$(($num % ($count * ${#stamp})))"
 		message+="${stamp:$remainder}$separator"
@@ -55,6 +74,14 @@ resetpress
 while [ "$#" -gt 0 ]; do
 
 case "$1" in
+	-cf|--colorfore)
+		setforecolor "$2"; shift
+		colorflag="true"
+	;;
+	-cb|--colorback)
+		setbackcolor "$2"; shift
+		colorflag="true"
+	;;
 	-r|--repeat)
 		repeatflag="true"; numberflag="false"
 	;;
@@ -71,6 +98,7 @@ case "$1" in
 		if [ "$2" = "nl" ]; then terminator+=$'\n'
 		elif [ "$2" = "tab" ]; then	terminator+=$'\t'
 		else terminator+="$2"; fi
+		shift
 	;;
 	--)
 		printingpress; resetpress
@@ -86,5 +114,6 @@ done
 if [ "$num" -lt 1 ] || [ "$stamp" = '' ]; then printf ''; exit 0; fi
 printingpress
 
+if [ "$colorflag" = true ]; then resetcolors; fi
 exit 0
 
