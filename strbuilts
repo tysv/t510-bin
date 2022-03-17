@@ -5,8 +5,6 @@
 #	TPUT
 #contains functions utilizing strbuilder to create reusable string functions
 
-
-
 printdashword () {
 	message="${1:-}"
 	term_w="$(tput cols)"
@@ -20,6 +18,18 @@ printdashword () {
 
 #prints terminal width of dash character, or your chosen single character
 printline () { char="${1:--}"; strbuilder "$(tput cols)" "${char:0:1}"; }
+
+printcolorchart () {
+	pad="000"
+	message="C: ${pad:0:$pl}$col"
+	for col in {0..256}; do
+		pl=$((3 - ${#col}))
+		tput setaf 15
+		tput setab $col
+		printf "%s   " "C: ${pad:0:$pl}$col"
+		if [ $((col % 8)) -eq 0 ]; then tput sgr0; printf "\n"; fi
+	done
+}
 
 printalpharoad () {
 	clear
@@ -43,11 +53,13 @@ printalpharoad () {
 
 help="	--line|-l <c>		print terminal width line of overridable <dash>
 	--center|-c <arg> <c>	print <arg> in center of twidth  <dash> line
+	--chart|--colorchart	print table of all tput colors. just helpful.
 "
 
 case $1 in
 	--line|-l) printline "$2";;
 	--center|-c) printdashword "$2" "$3";;
+	--chart|--colorchart) printcolorchart;;
 	*|--help|-h) strbuilts --center ' OPTIONS '; printf "%s\n" "$help";;
 esac
 exit 0
