@@ -192,8 +192,7 @@ Options:
 			sfiles=() #### SELECTED files #####
 			read -p "(all) files or select by index (# [...] #) :> " selection
 			if [ "$selection" = "all" ]; then sfiles=("${filelist[@]}")
-			elif [ "$selection" = "q" ]; then 
-				sleep 2; continue
+			elif [ "$selection" = "q" ]; then clear; sleep .5; displaymems;
 			else
 				IFS=' ' read -a indices <<< "$selection"
 				for i in "${indices[@]}"; do
