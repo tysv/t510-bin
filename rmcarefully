@@ -3,7 +3,7 @@
 #to be called by alias 'rm' to allow undoing rm calls
 #dependencies: realpath, basename, head, tail, find, mkdir
 
-debugflag=false; dry=false; now="now" #now: change, if u want a false rm history
+debugflag=false;dry=false;now="now" #now: change, if u want a false rm history
 rmdirectory="/$HOME/Documents/backups/.rmcarefully/"
 	if [ ! -d "$rmdirectory" ]; then mkdir --parents "$rmdirectory"; fi
 rmhistory="/$HOME/Documents/backups/.rmcarefully_history"
@@ -182,19 +182,26 @@ Options:
 		elif [ $choice_extra = "explorer" ] || [ $choice_extra = "e" ]; then
 			echo "implement open-file-explorer-here mode"
 		elif [ $choice_extra = "recover" ] || [ $choice_extra = "r" ]; then
-			clear; 
-			echo "copying files to origin"
-			read -p "(all) files or (file1 ... fileN):> " selection
-			if [ ! "$selection" = "all" ]; then	
-				IFS=' '; sfiles=("$selection"); fi
-			for filepair in "${filelist[@]}"; do IFS=' ';names=($filepair)
-				if [ ! "${#selection[@]}" -gt 0 ]; then 
-					cp "${names[1]}" "${names[0]}"; fi
-				for sfile in ""${sfiles[@]}""; do
-					if [ "$sfile" = "$(basename ${names[0]})" ]; then 
-						cp "${names[1]}" "${names[0]}"; fi
-				done						
+			clear
+			echo "preparing to copy files to their origin...";			
+			for i in "${!filelist[@]}"; do 
+				printf "%s\n" "$i: ${filelist[$i]// *}"
 			done
+			sfiles=()
+			read -p "(all) files or select by index (# [...] #) :> " selection
+			if [ "$selection" = "all" ]; then sfiles=("${filelist[@]}")
+			else
+				IFS=' ' read -a indices <<< "$selection"
+				for i in "${indices[@]}"; do
+					#valid index AND non blank array entry
+					if [ -z "${i//[0-9]}" -o -n ${filelist[$i]} ]; then 
+						sfiles+="${filelist[$i]}"
+					else echo "invalid index <$i> ignored"; fi
+				done
+			fi
+			for filepair in "${sfiles[@]}"; do IFS=' ' names=($filepair)
+				cp "${names[1]}" "${names[0]}"
+			done						
 			continue
 		elif [ $choice_extra = "jail" ] || [ $choice_extra = "j" ]; then
 			echo "copying files to jail"
