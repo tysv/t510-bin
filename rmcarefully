@@ -170,26 +170,30 @@ Options:
 			displayhelp; continue; fi
 ################################################################################
 ################		VALID DIGIT, UTILIZING FILE LISTS NOW	   #############
-		if [ ! -n "$choice_digits" ]; then
+		if [ ! -n "$choice_digits10?" ]; then
 			echo "error: all operations require a valid index."; continue; fi
 		files=("$(tail -n +2 "${memarr[$choice_digits]}")")
+		choice_dir="$(dirname ${memarr[$choice_digit]})"
 		IFS=$'\n' filelist=($files)		
 		if [ "$choice_extra" = '?' ]; then #one line loop!
 			#DONT SHOW the NEW filenames which comes after the ' ' char
 			printf "%s\n" "${filelist[@]//$' '*/}"; continue
 		elif [ $choice_extra = "terminal" ] || [ $choice_extra = "t" ]; then
-			echo "implement open-terminal-here mode"
+			exo-open --launch TerminalEmulator --working-directory=$choice_dir
+			continue
 		elif [ $choice_extra = "explorer" ] || [ $choice_extra = "e" ]; then
-			echo "implement open-file-explorer-here mode"
+			thunar $choice_dir &
 		elif [ $choice_extra = "recover" ] || [ $choice_extra = "r" ]; then
 			clear
 			echo "preparing to copy files to their origin...";			
 			for i in "${!filelist[@]}"; do 
 				printf "%s\n" "$i: ${filelist[$i]// *}"
 			done
-			sfiles=()
+			sfiles=() #### SELECTED files #####
 			read -p "(all) files or select by index (# [...] #) :> " selection
 			if [ "$selection" = "all" ]; then sfiles=("${filelist[@]}")
+			elif [ "$selection" = "q" ]; then 
+				sleep 2; continue
 			else
 				IFS=' ' read -a indices <<< "$selection"
 				for i in "${indices[@]}"; do
