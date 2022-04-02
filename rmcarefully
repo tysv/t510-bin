@@ -178,12 +178,12 @@ Options:
 		if [ "$choice_extra" = '?' ]; then #one line loop!
 			#DONT SHOW the NEW filenames which comes after the ' ' char
 			printf "%s\n" "${filelist[@]//$' '*/}"; continue
-		elif [ $choice_extra = "terminal" ] || [ $choice_extra = "t" ]; then
+		elif [ "$choice_extra" = "terminal" ] || [ "$choice_extra" = "t" ]; then
 			exo-open --launch TerminalEmulator --working-directory=$choice_dir
 			continue
-		elif [ $choice_extra = "explorer" ] || [ $choice_extra = "e" ]; then
+		elif [ "$choice_extra" = "explorer" ] || [ "$choice_extra" = "e" ]; then
 			thunar $choice_dir &
-		elif [ $choice_extra = "recover" ] || [ $choice_extra = "r" ]; then
+		elif [ "$choice_extra" = "recover" ] || [ "$choice_extra" = "r" ]; then
 			clear
 			echo "preparing to copy files to their origin...";			
 			for i in "${!filelist[@]}"; do 
@@ -206,14 +206,14 @@ Options:
 				cp "${names[1]}" "${names[0]}"
 			done						
 			continue
-		elif [ $choice_extra = "jail" ] || [ $choice_extra = "j" ]; then
+		elif [ "$choice_extra" = "jail" ] || [ "$choice_extra" = "j" ]; then
 			echo "copying files to jail"
 			for filepair in "${filelist[@]}"; do IFS=' ';names=($filepair)
 				new="$jaildir$(basename "${names[0]}")"
 				cp "${names[1]}" "$new" #echo "mv "${names[1]}" "$new""
 			done
 			continue
-		elif [ $choice_extra = 'cleanse' ] || [ $choice_extra = 'c' ]; then
+		elif [ "$choice_extra" = 'cleanse' ] || [ "$choice_extra" = 'c' ]; then
 			echo "WARNING ABOUT TO DELETE:"; printf "%s\n" "${filelist[@]}"
 			read -p 'you sure bud? (y/n) :> ' choice
 			if [ ! $choice = y ]; then continue; fi
@@ -328,6 +328,9 @@ while [ -n "$1" ]; do
 	fi
 	if [ "$1" = "--remove" ] || [ "$1" = "-r" ]; then
 		shift; #this can't be the way lol
+	fi	
+	if [ "$1" = "--search" ] || [ "$1" = "-s" ]; then 
+		tree "$rmdirectory" --prune -Pa "*${2}*"; exit 0
 	fi
 	if [ "$#" -gt 0 ]; then
 		remove "$@"; exit 0
