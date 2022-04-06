@@ -56,7 +56,7 @@ skim () {
 	shopt -s nullglob
 	width=$(tput cols)
 	if [ -z  "$1" ]; then filelist=(${dir_in}*)
-	elif [ "$1" = "in" ]; then filelist=(${dir_out}*)
+	elif [ "$1" = "out" ]; then filelist=(${dir_out}*)
 	fi
 	if [ ${#filelist[@]} -eq 0 ]; then echo "box is empty"; exit 0; fi
 	for file in "${filelist[@]}"; do
