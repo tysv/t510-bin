@@ -1,0 +1,54 @@
+#!/bin/bash
+
+#official name: ? CANTIO ? latin word for singing (birds); playing music
+
+#front end some mpg321 control
+runningfile="$HOME/.config/ty/musicty.pid"
+
+
+randomSongChoice () {
+	location="${1:-"$HOME/Music"}"
+	tracklist=($(find "$location" -maxdepth 1 -type f))
+	numtracks="${#tracklist[@]}"
+    [ $numtracks -gt 0 ] && index=$(($RANDOM % $numtracks)) || exit 1
+	printf "%s" "${tracklist[$index]}"
+}
+
+randomInfinite () {
+	song=$(randomSongChoice)
+	#play song in background
+	mpg321 -l 0 "$song" &
+	#store process of mpg321 in file
+	echo -e "$!" > "$runningfile"
+}
+
+# Call to try and stop any hung songs which are still playing. 
+# Wipe anything like temp files, running processes, etc
+shutdown () {
+	id="$(cat $runningfile)"
+	kill "$id"
+	exit 0
+}
+
+while [ -n "$1" ]; do
+	#default mode is: pick random song and loop infinte times
+	case "$1" in
+		test) #just testing case
+			echo "test option"
+		;;
+		stop|quit|shutdown|reset|q|-q|--shutdown|--quit|--stop)
+			shutdown
+		;;
+		inf|--infinite|-inf|--inf|infinite)
+			randomInfinite
+		;;
+		interactive|--interactive|-i|i)
+			echo "implement interactive mode please"
+		;;
+		*)
+			echo ">$1< is not recognized input"
+		;;
+	esac
+	shift
+done
+
