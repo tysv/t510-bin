@@ -4,10 +4,24 @@
 
 #front end some mpg321 control
 runningfile="$HOME/.config/ty/musicty.pid"
+volume_setting=33 #0-100
+loop_num=0 #0 is infinite
 
+playSong () {
+	#play song in background
+	mpg321 -g "$volume_setting" -l "$loop_num" "$1" &
+	#store process of mpg321 in file
+	echo -e "$!" > "$runningfile"
+}
+
+listSongChoice () {
+	location="$HOME/Music/"
+	choice=$(find "$location" -type f | fzf)
+	playSong "$choice"
+}
 
 randomSongChoice () {
-	location="${1:-"$HOME/Music"}"
+	location="${1:-"$HOME/Music/nightmusic"}"
 	tracklist=($(find "$location" -maxdepth 1 -type f))
 	numtracks="${#tracklist[@]}"
     [ $numtracks -gt 0 ] && index=$(($RANDOM % $numtracks)) || exit 1
@@ -16,10 +30,7 @@ randomSongChoice () {
 
 randomInfinite () {
 	song=$(randomSongChoice)
-	#play song in background
-	mpg321 -l 0 "$song" &
-	#store process of mpg321 in file
-	echo -e "$!" > "$runningfile"
+	playSong "$1"
 }
 
 # Call to try and stop any hung songs which are still playing. 
@@ -27,20 +38,42 @@ randomInfinite () {
 shutdown () {
 	id="$(cat $runningfile)"
 	kill "$id"
+	rm "$runningfile"
 	exit 0
+}
+
+shutdownAll (){
+	name='mpg321'
+	echo "will kill all processes with the name: $name"
+	echo "Proceed?? (y/n)"
+	read -p '> ' choice
+	if [ $choice = "y" ]; then pkill "$name"; rm "$runningfile"; fi
+	
 }
 
 while [ -n "$1" ]; do
 	#default mode is: pick random song and loop infinte times
 	case "$1" in
-		test) #just testing case
-			echo "test option"
+		help|--help|-h)
+			printf "%s\n" 'Functionality is super basic right now.'
+			printf "%s\n" 'musicty inf		to loop one random song'
+			printf "%s\n" 'musicty stop		to kill the launched process'
 		;;
-		stop|quit|shutdown|reset|q|-q|--shutdown|--quit|--stop)
+		stop|quit|shutdown|reset|q|-q|--shutdown|--quit|--stop|-s)
 			shutdown
+		;;
+		--stop-all|--force-stop|--force-quit)
+			shutdownAll
 		;;
 		inf|--infinite|-inf|--inf|infinite)
 			randomInfinite
+		;;
+		--choose|-c|--list|--list-songs)
+			listSongChoice
+		;;
+		--set-loops|--set-repeats|--loops|--repeats)
+			shift
+			loop_num="$1"
 		;;
 		interactive|--interactive|-i|i)
 			echo "implement interactive mode please"
