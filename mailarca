@@ -26,7 +26,7 @@ getcount () {
 	shopt -u nullglob
 }
 readall () {
-	if [ "$1" = "out" -o "$1" = "outbox" ]; then
+	if [ "$1" = "out" -o "$1" = "outbox" -o "$1" = "pending" ]; then
 		filelist="$dir_out"; shift;
 	else filelist="$dir_in"; fi
 	if [ ${#filelist[@]} -eq 0 ]; then echo "box is empty"; exit 0; fi
@@ -142,13 +142,17 @@ while [ -n "$1" ]; do
 			cronjob
 		;;
 		-r|--readall)
-			readall "$2"
+			shift
+			readall "$1"
+			shift
 		;;
 		-s|--skim)
 			if [ -n "$2" ]; then skim "$2"; shift; else skim; fi
 		;;
 		*)
-			echo "no option chosen"
+			#echo "no option chosen"
+			add "$*"
+			exit 0
 		;;
 	esac
 	shift
