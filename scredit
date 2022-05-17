@@ -17,11 +17,14 @@ if [ ! -f "$dir_list_path" ]; then #first time start, make bin and dir_list file
 	mkdir --parents "$dir_list_path"; touch "$HOME/bin/.scredit"; fi
 #reads in the directories to search for files
 read -d '$EOF' -a directories < "$dir_list_path"
+#include current directory in search list AFTER all the listed directories; then the directory we're pointing to, if any
+directories+=("$PWD")
 #while read -e dir; do directories+=("$dir"); done < "$dir_list_path"
 if [ ${#directories[@]} -eq 0 ]; then
 	echo "Blank .scredit file. Add your script directories to ($dir_list_path)."
 	exit 0
 fi
+
 ################################################################################
 ################################################################################
 #----------------------------# FUNCTIONS  #------------------------------------#
@@ -33,7 +36,7 @@ addDirectory () {
 	if [ "$1" = "here" ]; then dirpath="$PWD"
 	else dirpath="$1"; fi
 	if [ -d "$dirpath" ]; then echo "$dirpath" >> "$dir_list_path"
-	else echo "Failed to find directory ("$dirpath")"; fi
+	else echo "Failed to find directory ($dir_path"; fi
 	return 0
 }
 #fuzzyfiles is a global array containing the close matches
@@ -112,7 +115,7 @@ presentOptions () {
 		debug "lstart: $lstart     lend: $lend"
 		for index in $(seq $lstart $lend); do
 			filename="${fuzzyfiles[$index]}"
-			if [ -n "$filename" ]; then	printf "$index: $filename\n"; fi
+			if [ -n "$filename" ]; then	printf "$index: $(realpath -L "$filename")\n"; fi
 		done
 		#PART 2 RESPOND TO THE DISPLAYED LIST
 		optionsMenu
@@ -121,7 +124,7 @@ presentOptions () {
 ################################################################################
 ################################################################################
 #------------------------------#  PROCESS BEGIN  #-----------------------------#
-#####################################################F###########################
+#####################################################F##########################
 ################################################################################
 
 success=false
@@ -165,6 +168,10 @@ elif [ $# -eq 1 ]; then
 		success=true; file="$dir_list_path"; fi
 	#standard operating mode - search for file, & track of candidate matches
 	straightSearch "$1"
+
+#	target_directory="$(dirname $1)"; #resolving
+#	if [ "${#target_directory}" -gt 1 ]; then directories+=("$(realpath -L $target_directory)"); fi
+
 	#if no exact matches found, present the candidate match list
 	if [ $success = "false" ]; then presentOptions; fi
 	#allows the user to use a new search term again, any number of times
