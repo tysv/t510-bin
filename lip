@@ -23,7 +23,7 @@ if [ $# -eq 0 ]; then
 				#echo "Scanning local IPs (192.168.1.0-254)"
 				#nmap -sn 192.168.1.0-254 > "$report"
 				echo "Scanning local IPs $localrange"
-				nmap -sn "$localrange" > "$report"
+				nmap -sn "$localrange" -F > "$report"
 				#sed -ni '1d' "$report"
 				echo "	last updated: $(date)" >> $report
 				cat "$report"
