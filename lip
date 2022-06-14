@@ -2,7 +2,7 @@
 
 #LIP ---> (L)ocal (IP)
 
-report="$HOME/reports/localhosts.log"
+report="$HOME/automation/reports/localhosts.log"
 expectedlocal="10.0.0.X"
 localrange=${expectedlocal//"X"/"0-254"}
 
