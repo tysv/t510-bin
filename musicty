@@ -7,6 +7,10 @@ runningfile="$HOME/.config/ty/musicty.pid"
 volume_setting=33 #0-100
 loop_num=0 #0 is infinite
 
+#debugflag=''
+debugflag="true"
+debug () { if [ -n "$debugflag" ]; then echo "$1"; fi; }
+
 playSong () {
 	#play song in background
 	mpg321 -g "$volume_setting" -l "$loop_num" "$1" &
