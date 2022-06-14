@@ -39,6 +39,7 @@ def reset(setting):
     fileprocess(label, destination, count, movarr)
 
 def fileprocess(label, destination, count, movarr):
+    global movedfiles
     if verbose_mode == True:
         print("settings look like this:")
         print("label: " + label)
@@ -64,7 +65,7 @@ def fileprocess(label, destination, count, movarr):
         if debugging_mode: print(f'Would do: {file} ---> {newfilepath}')
         else:
             os.rename(file, newfilepath)
-            movedfiles+=1
+            movedfiles = movedfiles + 1
         
     
 ############################## END OF FUNCTIONS ##############################
@@ -148,8 +149,7 @@ if debugging_mode == True:
     for s in settings:
         print(str(s))
     print()
-
-if reset_mode == True:
+elif reset_mode == True:
     for s in settings:
         reset(s)
 else:
