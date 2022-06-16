@@ -4,12 +4,21 @@
 
 #front end some mpg321 control
 runningfile="$HOME/.config/ty/musicty.pid"
+runningout="$HOME/.config/ty/musicty.log"
 volume_setting=33 #0-100
 loop_num=0 #0 is infinite
 
 #debugflag=''
 debugflag="true"
+forceflag=""
 debug () { if [ -n "$debugflag" ]; then echo "$1"; fi; }
+
+isDigit () {
+	value="$1"
+	#is not empty AND empty after removing all digits characters
+	if [ -n "$value" -a -z "${value//[0-9]}" ]; then return 0
+	else return 1; fi
+}
 
 playSong () {
 	#play song in background
@@ -21,7 +30,7 @@ playSong () {
 listSongChoice () {
 	location="$HOME/Music/"
 	choice=$(find "$location" -type f | fzf)
-	playSong "$choice"
+	printf "%s" "$choice"
 }
 
 randomSongChoice () {
@@ -30,11 +39,13 @@ randomSongChoice () {
 	numtracks="${#tracklist[@]}"
     [ $numtracks -gt 0 ] && index=$(($RANDOM % $numtracks)) || exit 1
 	printf "%s" "${tracklist[$index]}"
+
 }
 
 randomInfinite () {
-	song=$(randomSongChoice)
-	playSong "$1"
+	song="$(randomSongChoice)"
+	debug "randomsongchoice: $song"
+	playSong "$song"
 }
 
 # Call to try and stop any hung songs which are still playing. 
@@ -48,9 +59,12 @@ shutdown () {
 
 shutdownAll (){
 	name='mpg321'
-	echo "will kill all processes with the name: $name"
-	echo "Proceed?? (y/n)"
-	read -p '> ' choice
+	if [ -z "$forceflag" ]; then
+		echo "will kill all processes with the name: $name"
+		echo "Proceed?? (y/n)"
+		read -p '> ' choice
+	else choice="y"
+	fi
 	if [ $choice = "y" ]; then pkill "$name"; rm "$runningfile"; fi
 	
 }
@@ -63,6 +77,9 @@ while [ -n "$1" ]; do
 			printf "%s\n" 'musicty inf		to loop one random song'
 			printf "%s\n" 'musicty stop		to kill the launched process'
 		;;
+		--force|-f)
+			forceflag="true"
+		;;
 		stop|quit|shutdown|reset|q|-q|--shutdown|--quit|--stop|-s)
 			shutdown
 		;;
@@ -73,7 +90,9 @@ while [ -n "$1" ]; do
 			randomInfinite
 		;;
 		--choose|-c|--list|--list-songs)
-			listSongChoice
+			isDigit "$2" && { loop_num="$2"; shift; }
+			song=$(listSongChoice)
+			playSong "$song"
 		;;
 		--set-loops|--set-repeats|--loops|--repeats)
 			shift
