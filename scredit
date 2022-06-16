@@ -175,7 +175,8 @@ elif [ $# -eq 1 ]; then
 	straightSearch "$1"
 
 #	target_directory="$(dirname $1)"; #resolving
-#	if [ "${#target_directory}" -gt 1 ]; then directories+=("$(realpath -L $target_directory)"); fi
+#	if [ "${#target_directory}" -gt 1 ]; then 
+#		directories+=("$(realpath -L $target_directory)"); fi
 
 	#if no exact matches found, present the candidate match list
 	if [ $success = "false" ]; then presentOptions; fi
