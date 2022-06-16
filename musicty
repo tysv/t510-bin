@@ -94,9 +94,8 @@ while [ -n "$1" ]; do
 			song=$(listSongChoice)
 			playSong "$song"
 		;;
-		--set-loops|--set-repeats|--loops|--repeats)
-			shift
-			loop_num="$1"
+		--set-loops|--set-repeat|--loops|--repeat|-r)
+			isDigit "$2" && { loop_num="$2"; shift; } #fails silently -- bad??
 		;;
 		interactive|--interactive|-i|i)
 			echo "implement interactive mode please"
