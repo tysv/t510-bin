@@ -5,7 +5,7 @@
 #front end some mpg321 control
 runningfile="$HOME/.config/ty/musicty.pid"
 runningout="$HOME/.config/ty/musicty.log"
-volume_setting=33 #0-100
+volume_setting=10 #0-100
 loop_num=0 #0 is infinite
 
 #debugflag=''

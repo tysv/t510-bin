@@ -43,6 +43,8 @@ printHelpText () {
 	echo
 	echo "Directories to search within, in order of preference: "
 	printf "%s\n" "${directories[@]}"
+	strbuilts --center "  ALIASES & FUNCTIONS  "
+	shortcut-check "scredit"
 	exit 0
 }
 addDirectory () {
