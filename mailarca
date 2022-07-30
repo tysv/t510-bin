@@ -27,10 +27,17 @@ getcount () {
 }
 readall () {
 	if [ "$1" = "out" -o "$1" = "outbox" -o "$1" = "pending" ]; then
-		filelist="$dir_out"; shift;
-	else filelist="$dir_in"; fi
-	if [ ${#filelist[@]} -eq 0 ]; then echo "box is empty"; exit 0; fi
-	for file in "${filelist}"*; do
+		filespot="$dir_out"; shift;
+	else filespot="$dir_in"; fi
+
+	filelist=("$filespot"*)
+	
+	if [ ${#filelist[@]} -eq 0 -o "$(basename $filelist)" = '*' ]; then 
+		echo "box is empty"; 
+		exit 0; 
+	fi
+	
+	for file in "${filelist[@]}"; do
 		if [ -f "$file" ]; then
 			examine "$file"
 		fi
@@ -91,7 +98,8 @@ printhelptext () {
 	printf "%b\n" "\t-(-c)ronjob\tchecks and moves files: outbox --> inbox"
 	printf "%b\n" "\t-(-s)kim\treads first line from each message"
 	printf "%b\n" "\t-(-l)aunch\tstart the interactive mode"
-	printf "%b\n" "\t-(-r)eadall\tprints all the outbox messages"
+	printf "%b\n" "\t-(-r)eadall\tprints all the outbox messages\n\t\toptional: add \"outbox\" to see messages in the future queue."
+	
 	printf "%b\n" "$(strbuilts --line)"
 }
 
